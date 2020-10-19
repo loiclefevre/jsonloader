@@ -31,7 +31,17 @@ public class MetadataKeyDeserializer extends StdDeserializer<MetadataKey> {
         for (Iterator<Map.Entry<String, JsonNode>> it = mKeyNode.fields(); it.hasNext(); ) {
             Map.Entry<String, JsonNode> f = it.next();
 
-            //System.out.println(f.getKey());
+            //System.out.println(f.getKey()+": "+f.getValue().getClass().getName());
+
+            if(f.getValue().isInt()) {
+                mKey.addIndexColumn(f.getKey(),f.getValue().asInt() == 1);
+                continue;
+            }
+
+            if(f.getValue().isDouble()) {
+                mKey.addIndexColumn(f.getKey(),f.getValue().asDouble() == 1.0);
+                continue;
+            }
 
             if("_fts".equals(f.getKey()) && "text".equals(f.getValue().textValue())) {
                 mKey.text = true;

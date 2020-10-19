@@ -13,7 +13,6 @@ import java.util.Properties;
 import static com.oracle.jsonloader.util.Console.println;
 
 public class MetadataIndex {
-    private MetadataVersion v;
     private String name;
     private boolean unique;
     private MetadataKey key;
@@ -21,14 +20,6 @@ public class MetadataIndex {
     public MetadataIndex() {
     }
 
-
-    public MetadataVersion getV() {
-        return v;
-    }
-
-    public void setV(MetadataVersion v) {
-        this.v = v;
-    }
 
     public String getName() {
         return name;
@@ -66,16 +57,19 @@ public class MetadataIndex {
             final OracleCollection oracleCollection = db.openCollection(collectionName);
 
             if(!name.contains("$**")) {
-                final String indexSpec = String.format("{\"name\": \"%s\", \"fields\": [%s], \"unique\": %s}", name, getCreateIndexColumns(), unique);
+                final String indexSpec = String.format("{\"name\": \"%s\", \"fields\": [%s], \"unique\": %s}", collectionName+"$"+name, getCreateIndexColumns(), unique);
 
                 try {
                     final long start = System.currentTimeMillis();
+                    // System.out.println("\n"+indexSpec);
+
                     oracleCollection.admin().createIndex(db.createDocumentFromString(indexSpec));
                     final long end = System.currentTimeMillis();
 
-                    println(" OK ("+(end - start)+" ms)" /*+ indexSpec*/);
+                    println(" OK ("+(end - start)+" ms)" );
                 } catch (OracleException oe) {
                     if (oe.getErrorCode() == 2053) {
+                        oe.printStackTrace();
                         println(" already exists!");
                     } else {
                         throw oe;
@@ -128,7 +122,7 @@ public class MetadataIndex {
 
                 try {
                     final long start = System.currentTimeMillis();
-                    s.execute(String.format("CREATE SEARCH INDEX %s_search_index ON %s (json_document) FOR JSON " +
+                    s.execute(String.format("CREATE SEARCH INDEX %s$search_index ON %s (json_document) FOR JSON " +
                             "PARAMETERS('DATAGUIDE OFF SYNC(MANUAL)')",collectionName,collectionName));
 //                    s.execute(String.format("CREATE SEARCH INDEX %s_search_index ON %s (json_document) FOR JSON " +
 //                            "PARAMETERS('DATAGUIDE OFF SYNC(every \"freq=secondly;interval=10\" MEMORY 2G parallel 6)')",collectionName,collectionName));

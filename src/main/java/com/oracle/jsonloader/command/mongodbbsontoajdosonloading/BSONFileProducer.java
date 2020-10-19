@@ -1,8 +1,5 @@
 package com.oracle.jsonloader.command.mongodbbsontoajdosonloading;
 
-import com.oracle.jsonloader.command.mongodbbsontoajdosonloading.BlockingQueueCallback;
-import com.oracle.jsonloader.command.mongodbbsontoajdosonloading.JSONCollection;
-
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -66,7 +63,10 @@ public class BSONFileProducer implements Runnable {
     }
 
     private void readFileAndProduceBSONs() throws InterruptedException, IOException {
-        for (File f : dataFiles) {
+
+        for (int i = 0; i < dataFiles.size(); i++) {
+            final File f = dataFiles.get(i);
+
             try (
                     InputStream inputStream = f.getName().toLowerCase().endsWith(".gz") ?
                             new GZIPInputStream(new FileInputStream(f), 16 * 1024 * 1024)
@@ -85,8 +85,13 @@ public class BSONFileProducer implements Runnable {
                         if (batch.size() > 0) {
                             //System.out.println("Passing a batch of "+batch.size()+" bsons");
                             queue.put(batch);
-                            callback.addProduced(batch.size(), readSize, true);
-                            for (int i = 0; i < numberOfConsumers; i++) queue.put(new ArrayList<>());
+
+                            if (i == dataFiles.size() - 1) {
+                                callback.addProduced(batch.size(), readSize, true);
+                                for (int nOC = 0; nOC < numberOfConsumers; nOC++) queue.put(new ArrayList<>());
+                            } else {
+                                callback.addProduced(batch.size(), readSize, false);
+                            }
                         }
 
                         break;
