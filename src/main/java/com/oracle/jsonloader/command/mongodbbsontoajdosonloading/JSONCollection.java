@@ -7,16 +7,14 @@ import com.oracle.jsonloader.exception.SODACollectionCantKeepMongoDBIdException;
 import com.oracle.jsonloader.exception.SODACollectionIdNotAutomaticallyGeneratedException;
 import com.oracle.jsonloader.exception.SODACollectionMetadataUnmarshallException;
 import com.oracle.jsonloader.model.*;
-import oracle.jdbc.OracleConnection;
+import com.oracle.jsonloader.util.BSONCollectionFilenameFilter;
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleDatabase;
 import oracle.soda.rdbms.OracleRDBMSClient;
 import oracle.ucp.jdbc.PoolDataSource;
-import oracle.ucp.jdbc.PoolDataSourceFactory;
 
 import java.io.*;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -36,9 +34,10 @@ public class JSONCollection implements BlockingQueueCallback {
     public MongoDBMetadata mongoDBMetadata;
     private PoolDataSource pds;
 
-    public JSONCollection(final String name, final File metadata) {
+    public JSONCollection(final String name, final File metadata, final PoolDataSource pds) {
         this.name = name;
         this.metadata = metadata;
+        this.pds = pds;
     }
 
     /**
@@ -46,8 +45,9 @@ public class JSONCollection implements BlockingQueueCallback {
      */
     public void findDatafiles() {
         long totalSize = 0;
-        for (File f : metadata.getParentFile().listFiles()) {
-            if (f.isFile() && f.getName().startsWith(name) && (f.getName().endsWith(".bson") || f.getName().endsWith(".bson.gz"))) {
+
+        for (File f : metadata.getParentFile().listFiles(new BSONCollectionFilenameFilter(name))) {
+            if (f.isFile()) {// && f.getName().startsWith(name) && (f.getName().endsWith(".bson") || f.getName().endsWith(".bson.gz"))) {
                 dataFiles.add(f);
                 totalSize += f.length();
             }
@@ -59,24 +59,14 @@ public class JSONCollection implements BlockingQueueCallback {
     /**
      * Load the collection using all the data files found!
      *
-     * @param ajdConnectionService
-     * @param user
-     * @param password
      * @throws Exception
      */
-    public void load(String ajdConnectionService, String user, String password) throws Exception {
-        int cores = Runtime.getRuntime().availableProcessors();
-        if (cores > 1) cores--;
-
+    public void load(int cores) throws Exception {
         println("\t- now loading data using " + cores + " parallel thread(s)");
         final BlockingQueue<List<byte[]>> queue = new LinkedBlockingQueue<>(cores == 1 ? 1 : cores - 1);
 
         final CountDownLatch producerCountDownLatch = new CountDownLatch(1);
         final CountDownLatch consumerCountDownLatch = new CountDownLatch(cores);
-
-        print("\t- initializing connection pool ...");
-        initializeConnectionPool(ajdConnectionService, user, password, cores);
-        println(" OK");
 
         // ensure collection exists!
         createSODACollectionIfNotExists(name);
@@ -165,26 +155,6 @@ public class JSONCollection implements BlockingQueueCallback {
         if (mustHaveASearchIndex) {
             System.out.println("\t\t. " + name + "_search_index" + ": you will need to refresh it!");
         }
-    }
-
-    private void initializeConnectionPool(String ajdConnectionService, String user, String password, int cores) throws SQLException, IOException {
-        pds = PoolDataSourceFactory.getPoolDataSource();
-        pds.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
-
-        //pds.setURL("jdbc:oracle:thin:@//localhost/PDB1");
-        //System.out.println("jdbc:oracle:thin:@" + ajdConnectionService + "?TNS_ADMIN=" + new File("wallet").getCanonicalPath().replace('\\', '/'));
-        pds.setURL("jdbc:oracle:thin:@" + ajdConnectionService + "?TNS_ADMIN=" + new File("wallet").getCanonicalPath().replace('\\', '/'));
-        pds.setUser(user);
-        pds.setPassword(password);
-        pds.setConnectionPoolName("JDBC_UCP_POOL:" + Thread.currentThread().getName());
-        pds.setInitialPoolSize(cores);
-        pds.setMinPoolSize(cores);
-        pds.setMaxPoolSize(cores);
-        pds.setTimeoutCheckInterval(30);
-        pds.setInactiveConnectionTimeout(120);
-        pds.setValidateConnectionOnBorrow(true);
-        pds.setMaxStatements(20);
-        pds.setConnectionProperty(OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH, "20");
     }
 
     private void loadMongoDBMetadataContent() {
