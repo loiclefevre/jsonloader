@@ -1,6 +1,5 @@
 package com.oracle.jsonloader.command.mongodbbsontoajdosonloading;
 
-import oracle.sql.NUMBER;
 import oracle.sql.json.OracleJsonFactory;
 import oracle.sql.json.OracleJsonGenerator;
 import org.bson.BSONCallback;
@@ -11,14 +10,15 @@ import org.bson.types.BasicBSONList;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 
+import javax.json.stream.JsonGenerator;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.sql.SQLException;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
+// TODO: push vs pull?
 public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
 
     private static final boolean DEBUG = false;
@@ -32,7 +32,7 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
     private final OracleJsonFactory factory = new OracleJsonFactory();
     // oson output
     private final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    private OracleJsonGenerator gen;
+    private JsonGenerator gen;
     private int bsonLength;
     private String oid;
 
@@ -43,7 +43,7 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
 
     @Override
     public BSONObject readObject(InputStream in) {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("readObject");
     }
 
     @Override
@@ -87,8 +87,8 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
             this.root = this.create(false, (List) null);
             this.stack.add((BSONObject) this.root);
             this.arrayStack.addLast(false);
-            gen = outputOsonFormat ? factory.createJsonBinaryGenerator(out) :
-                    factory.createJsonTextGenerator(out);
+            OracleJsonGenerator ogen = outputOsonFormat ? factory.createJsonBinaryGenerator(out) : factory.createJsonTextGenerator(out);
+            gen = ogen.wrap(JsonGenerator.class);
             gen.writeStartObject();
         }
     }
@@ -122,7 +122,6 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
             s.append("\t");
         }
         return s.toString();
-
     }
 
     @Override
@@ -188,124 +187,83 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
     public Object arrayDone() {
         if (DEBUG) System.out.println("arrayDone -> using objectDone");
         Object o = this.objectDone();
-        //this.arrayStack.removeLast();
         return o;
     }
 
     @Override
     public void gotNull(String name) {
-        //this.cur().put(name, (Object) null);
         if (isInsideArray())
             gen.writeNull();
         else
             gen.writeNull(name);
     }
 
-    public void gotUndefined(String name) {
-        System.out.println("Warning: undefined");
-    }
-
-    public void gotMinKey(String name) {
-        //this.cur().put(name, new MinKey());
-        System.out.println("Warning: MinKey");
-    }
-
-    public void gotMaxKey(String name) {
-        //this.cur().put(name, new MaxKey());
-        System.out.println("Warning: MaxKey");
-    }
-
-    public void gotBoolean(String name, boolean value) {
-        //this._put(name, value);
+    @Override
+    public void gotBoolean(final String name, final boolean value) {
         if (isInsideArray())
             gen.write(value);
         else
             gen.write(name, value);
     }
 
-    public void gotDouble(String name, double value) {
-        //this._put(name, value);
-        try {
-            if (isInsideArray())
-                gen.write(factory.createValue(new NUMBER(value)));
-            else
-                gen.write(name, factory.createValue(new NUMBER(value)));
-        } catch (SQLException sqle) {
-            throw new RuntimeException(sqle);
-        }
-    }
-
-    public void gotInt(String name, int value) {
-        //this._put(name, value);
-        if (isInsideArray())
-            gen.write(factory.createValue(new NUMBER(value)));
-        else
-            gen.write(name, factory.createValue(new NUMBER(value)));
-    }
-
-    public void gotLong(String name, long value) {
-        //this._put(name, value);
-        //System.out.println(isInsideArray() + " gotLong " + name + "=" + value);
-        if (isInsideArray())
-            gen.write(factory.createValue(new NUMBER(value)));
-        else
-            gen.write(name, factory.createValue(new NUMBER(value)));
-    }
-
-    public void gotDecimal128(String name, Decimal128 value) {
-        //this._put(name, value);
-        try {
-            if (isInsideArray())
-                gen.write(factory.createValue(new NUMBER(value.bigDecimalValue())));
-            else
-                gen.write(name, factory.createValue(new NUMBER(value.bigDecimalValue())));
-        } catch (SQLException sqle) {
-            throw new RuntimeException(sqle);
-        }
-    }
-
-    public void gotDate(String name, long millis) {
-        //this._put(name, new Date(millis));
-        if (isInsideArray())
-            gen.write(new Date(millis).toInstant());
-        else
-            gen.write(name, new Date(millis).toInstant());
-    }
-
-    public void gotRegex(String name, String pattern, String flags) {
-        // TODO this._put(name, Pattern.compile(pattern, BSON.regexFlags(flags)));
-        System.out.println("Warning: regex");
-    }
-
-    public void gotString(String name, String value) {
-        //this._put(name, value);
-//        System.out.println("gotString: " + name + ", " + value);
+    @Override
+    public void gotDouble(final String name, final double value) {
         if (isInsideArray())
             gen.write(value);
         else
             gen.write(name, value);
     }
 
-    public void gotSymbol(String name, String value) {
-        //this._put(name, value);
-        //System.out.println("Warning: symbol");
+    @Override
+    public void gotInt(final String name, final int value) {
         if (isInsideArray())
             gen.write(value);
         else
             gen.write(name, value);
     }
 
-    public void gotTimestamp(String name, int time, int increment) {
-        //this._put(name, new BSONTimestamp(time, increment));
-        //BSONTimestamp timestamp  = new BSONTimestamp(time, increment);
-        // Rem: for internal use of MongoDB only
-        //gen.write(name, new Date((long) time * 1000L).toInstant());
-        System.out.println("Warning: timestamp");
+    @Override
+    public void gotLong(final String name, final long value) {
+        if (isInsideArray())
+            gen.write(value);
+        else
+            gen.write(name, value);
     }
 
-    public void gotObjectId(String name, ObjectId id) {
-        //this._put(name, id);
-        //System.out.println("ObjectId: " + id.toString());
+    @Override
+    public void gotDecimal128(final String name, final Decimal128 value) {
+        if (isInsideArray())
+            gen.write(value.bigDecimalValue());
+        else
+            gen.write(name, value.bigDecimalValue());
+    }
+
+    @Override
+    public void gotDate(final String name, final long millis) {
+        if (isInsideArray())
+            gen.write(new Date(millis).toInstant().toString());
+        else
+            gen.write(name, new Date(millis).toInstant().toString());
+    }
+
+    @Override
+    public void gotString(final String name, final String value) {
+        if (isInsideArray())
+            gen.write(value);
+        else
+            gen.write(name, value);
+    }
+
+    @Override
+    public void gotSymbol(final String name, final String value) {
+        if (isInsideArray())
+            gen.write(value);
+        else
+            gen.write(name, value);
+    }
+
+    @Override
+    public void gotObjectId(final String name, final ObjectId id) {
         if (oid == null && this.stack.size() == 1 && "_id".equals(name)) {
             oid = id.toString();
         }
@@ -316,69 +274,83 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
             gen.write(name, id.toString());
     }
 
-    public void gotDBRef(String name, String namespace, ObjectId id) {
-//        this._put(name, (new BasicBSONObject("$ns", namespace)).append("$id", id));
-        System.out.println("Warning: DBRef");
+    @Override
+    public void gotBinary(final String name, final byte type, final byte[] data) {
+        if (isInsideArray())
+            gen.write(hexa(data));
+        else
+            gen.write(name, hexa(data));
+    }
+
+    private static String hexa(final byte[] data)
+    {
+        final char[] result = new char[data.length * 2];
+
+        int j = 0;
+        for (int i = 0; i < data.length; i++)
+        {
+            final int x = data[i];
+            int k = (x >> 4) & 0xF;
+            result[j++] = (char)(k < 10 ? '0' + k : 'A' + k - 10);
+            k = x & 0xF;
+            result[j++] = (char)(k < 10 ? '0' + k : 'A' + k - 10);
+        }
+
+        return new String(result);
     }
 
     @Override
-    @Deprecated
-    public void gotBinaryArray(String s, byte[] bytes) {
-        System.out.println("Warning: binary array");
-    }
-
-    public void gotBinary(String name, byte type, byte[] data) {
-        /*if (type != 0 && type != 2) {
-            this._put(name, new Binary(type, data));
-        } else {
-            this._put(name, data);
-        }*/
-
-        System.out.println("Warning: binary");
-    }
-
-    public void gotUUID(String name, long part1, long part2) {
-        //this._put(name, new UUID(part1, part2));
+    public void gotUUID(final String name, final long part1, final long part2) {
         final UUID uuid = new UUID(part1, part2);
-        //System.out.println("Warning: UUID");
         if (isInsideArray())
             gen.write(uuid.toString());
         else
             gen.write(name, uuid.toString());
     }
 
+    @Override
     public void gotCode(String name, String code) {
-        //this._put(name, new Code(code));
-        //System.out.println("Warning: code");
-        if (isInsideArray())
-            gen.write(code);
-        else
-            gen.write(name, code);
+        throw new UnsupportedOperationException("Code");
     }
 
+    @Override
     public void gotCodeWScope(String name, String code, Object scope) {
-        //this._put(name, new CodeWScope(code, (BSONObject) scope));
-        System.out.println("Warning: CodeWScope");
+        throw new UnsupportedOperationException("CodeWScope");
     }
 
-    protected void _put(String name, Object value) {
-        this.cur().put(name, value);
+    @Override
+    public void gotUndefined(String name) {
+        throw new UnsupportedOperationException("Undefined");
     }
 
-    protected BSONObject cur() {
-        return this.stack.getLast();
+    @Override
+    public void gotMinKey(String name) {
+        throw new UnsupportedOperationException("MinKey");
     }
 
-
-    protected String curName() {
-        return this.nameStack.peekLast();
+    @Override
+    public void gotMaxKey(String name) {
+        throw new UnsupportedOperationException("MaxKey");
     }
 
-    protected void setRoot(Object root) {
-        this.root = root;
+    @Override
+    public void gotDBRef(String name, String namespace, ObjectId id) {
+        throw new UnsupportedOperationException("DBRef");
     }
 
-    protected boolean isStackEmpty() {
-        return this.stack.size() < 1;
+    @Override
+    @Deprecated
+    public void gotBinaryArray(String s, byte[] bytes) {
+        throw new UnsupportedOperationException("BinaryArray");
+    }
+
+    @Override
+    public void gotRegex(String name, String pattern, String flags) {
+        throw new UnsupportedOperationException("Regex");
+    }
+
+    @Override
+    public void gotTimestamp(String name, int time, int increment) {
+        throw new UnsupportedOperationException("Timestamp");
     }
 }

@@ -87,7 +87,7 @@ public class JSONCollection implements BlockingQueueCallback {
         }
 
         if (mustHaveASearchIndex) {
-            print("\t\t. " + name + "_search_index" + ": creating JSON search index (manual refresh) ...");
+            print("\t\t. " + name + "$search_index" + ": creating JSON search index (manual refresh) ...");
             MetadataIndex.createJSONSearchIndex(name, pds);
         }
 
@@ -103,17 +103,20 @@ public class JSONCollection implements BlockingQueueCallback {
 
         boolean producerDone = false;
         boolean consumersDone = false;
+
+        final long TIMEOUT = 500L;
+
         try {
 
             while (!(producerDone && consumersDone)) {
 
                 //System.out.println("Waiting for producer...");
                 if (!producerDone) {
-                    producerDone = producerCountDownLatch.await(200, TimeUnit.MILLISECONDS);
+                    producerDone = producerCountDownLatch.await(TIMEOUT, TimeUnit.MILLISECONDS);
                 }
                 //System.out.println("Waiting for consumers...");
                 if (!consumersDone) {
-                    consumersDone = consumerCountDownLatch.await(200, TimeUnit.MILLISECONDS);
+                    consumersDone = consumerCountDownLatch.await(TIMEOUT, TimeUnit.MILLISECONDS);
                 }
 
                 final long curTime = System.currentTimeMillis();
@@ -153,7 +156,7 @@ public class JSONCollection implements BlockingQueueCallback {
         }
 
         if (mustHaveASearchIndex) {
-            System.out.println("\t\t. " + name + "_search_index" + ": you will need to refresh it!");
+            System.out.println("\t\t. " + name + "$search_index" + String.format(": you will need to synchronize it with:\n\t\t\tbegin\n\t\t\t\tCTX_DDL.SYNC_INDEX(idx_name => '%s$search_index', memory => '512M', parallel_degree => 6, locking => CTX_DDL.LOCK_NOWAIT);\n\t\t\tend;\n\t\t\t/",name));
         }
     }
 
