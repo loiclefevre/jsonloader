@@ -11,8 +11,7 @@ import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 
 import javax.json.stream.JsonGenerator;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
+import java.io.*;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
@@ -173,6 +172,8 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
 
     @Override
     public void arrayStart(String name) {
+        final boolean insidearray = isInsideArray();
+
         this.nameStack.addLast(name);
         BSONObject o = this.create(true, this.nameStack);
         if (DEBUG) System.out.println(stacker() + "arrayStart: " + name);
@@ -180,7 +181,16 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
         this.stack.addLast(o);
         this.arrayStack.addLast(true);
 
-        gen.writeStartArray(name);
+        //System.out.println("start array: "+name);
+
+        if (insidearray)
+            gen.writeStartArray();
+        else
+            gen.writeStartArray(name);
+    }
+
+    private boolean parentIsAnArray() {
+        return this.arrayStack.get(this.arrayStack.size()-2);
     }
 
     @Override
@@ -282,18 +292,16 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
             gen.write(name, hexa(data));
     }
 
-    private static String hexa(final byte[] data)
-    {
+    private static String hexa(final byte[] data) {
         final char[] result = new char[data.length * 2];
 
         int j = 0;
-        for (int i = 0; i < data.length; i++)
-        {
+        for (int i = 0; i < data.length; i++) {
             final int x = data[i];
             int k = (x >> 4) & 0xF;
-            result[j++] = (char)(k < 10 ? '0' + k : 'A' + k - 10);
+            result[j++] = (char) (k < 10 ? '0' + k : 'A' + k - 10);
             k = x & 0xF;
-            result[j++] = (char)(k < 10 ? '0' + k : 'A' + k - 10);
+            result[j++] = (char) (k < 10 ? '0' + k : 'A' + k - 10);
         }
 
         return new String(result);
@@ -353,4 +361,45 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
     public void gotTimestamp(String name, int time, int increment) {
         throw new UnsupportedOperationException("Timestamp");
     }
+
+
+    public static void main(String[] args) throws Throwable {
+        InputStream in = new FileInputStream(new File("test.bson"));
+
+        byte[] data = readNextBSONRawData(in);
+
+        final MyBSONDecoder decoder = new MyBSONDecoder(true);
+
+        final BSONObject obj = decoder.readObject(data);
+
+
+    }
+
+    private final static byte[] bsonDataSize = new byte[4];
+
+    private static byte[] readNextBSONRawData(InputStream input) throws IOException {
+        int readBytes = input.read(bsonDataSize, 0, 4);
+        if (readBytes != 4) throw new EOFException();
+
+        final int bsonSize = (bsonDataSize[0] & 0xff) |
+                ((bsonDataSize[1] & 0xff) << 8) |
+                ((bsonDataSize[2] & 0xff) << 16) |
+                ((bsonDataSize[3] & 0xff) << 24);
+
+        final byte[] rawData = new byte[bsonSize];
+
+        System.arraycopy(bsonDataSize, 0, rawData, 0, 4);
+
+        for (int i = bsonSize - 4, off = 4; i > 0; off += readBytes) {
+            readBytes = input.read(rawData, off, i);
+            if (readBytes < 0) {
+                throw new EOFException();
+            }
+
+            i -= readBytes;
+        }
+
+        return rawData;
+    }
+
 }

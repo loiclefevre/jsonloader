@@ -47,7 +47,7 @@ public class JSONCollection implements BlockingQueueCallback {
         long totalSize = 0;
 
         for (File f : metadata.getParentFile().listFiles(new BSONCollectionFilenameFilter(name))) {
-            if (f.isFile()) {// && f.getName().startsWith(name) && (f.getName().endsWith(".bson") || f.getName().endsWith(".bson.gz"))) {
+            if (f.isFile() && f.length() > 0) {// && f.getName().startsWith(name) && (f.getName().endsWith(".bson") || f.getName().endsWith(".bson.gz"))) {
                 dataFiles.add(f);
                 totalSize += f.length();
             }
