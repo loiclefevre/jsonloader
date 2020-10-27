@@ -26,7 +26,7 @@ public class MetadataIndex {
     }
 
     public void setName(String name) {
-        this.name = name;
+        this.name = name.replace('.', '_');
     }
 
     public boolean isUnique() {
