@@ -362,18 +362,19 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
         throw new UnsupportedOperationException("Timestamp");
     }
 
-
+/*
     public static void main(String[] args) throws Throwable {
-        InputStream in = new FileInputStream(new File("test.bson"));
+        //InputStream in = new FileInputStream(new File("test.bson"));
+        //InputStream in = new FileInputStream(new File("autoedit_countdown_tag.bson"));
+        InputStream in = new FileInputStream(new File("emails.bson"));
 
         byte[] data = readNextBSONRawData(in);
 
         final MyBSONDecoder decoder = new MyBSONDecoder(true);
 
         final BSONObject obj = decoder.readObject(data);
-
-
     }
+*/
 
     private final static byte[] bsonDataSize = new byte[4];
 
@@ -385,6 +386,8 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
                 ((bsonDataSize[1] & 0xff) << 8) |
                 ((bsonDataSize[2] & 0xff) << 16) |
                 ((bsonDataSize[3] & 0xff) << 24);
+
+        //System.out.println("bsonSize = "+bsonSize);
 
         final byte[] rawData = new byte[bsonSize];
 

@@ -46,35 +46,60 @@ public class MetadataIndex {
     }
 
     public void createIndex(String collectionName, PoolDataSource pds) throws Exception {
-        final Properties props = new Properties();
-        props.put("oracle.soda.sharedMetadataCache", "true");
-        props.put("oracle.soda.localMetadataCache", "true");
+        if (pds != null) {
+            final Properties props = new Properties();
+            props.put("oracle.soda.sharedMetadataCache", "true");
+            props.put("oracle.soda.localMetadataCache", "true");
 
-        final OracleRDBMSClient cl = new OracleRDBMSClient(props);
+            final OracleRDBMSClient cl = new OracleRDBMSClient(props);
 
-        try (Connection c = pds.getConnection()) {
-            final OracleDatabase db = cl.getDatabase(c);
-            final OracleCollection oracleCollection = db.openCollection(collectionName);
+            try (Connection c = pds.getConnection()) {
+                final OracleDatabase db = cl.getDatabase(c);
+                final OracleCollection oracleCollection = db.openCollection(collectionName);
 
-            if(!name.contains("$**")) {
-                final String indexSpec = String.format("{\"name\": \"%s\", \"fields\": [%s], \"unique\": %s}", collectionName+"$"+name, getCreateIndexColumns(), unique);
+                if (!name.contains("$**")) {
+                    final String indexSpec = key.spatial ?
+                            String.format("{\"name\": \"%s\", \"spatial\": \"%s\"}", collectionName + "$" + name, key.columns.get(0).name)
+                            :
+                            String.format("{\"name\": \"%s\", \"fields\": [%s], \"unique\": %s}", collectionName + "$" + name, getCreateIndexColumns(), unique);
+
+                    try {
+                        final long start = System.currentTimeMillis();
+                        // System.out.println("\n"+indexSpec);
+
+                        oracleCollection.admin().createIndex(db.createDocumentFromString(indexSpec));
+                        final long end = System.currentTimeMillis();
+
+                        println(" OK (" + (end - start) + " ms)");
+                    } catch (OracleException oe) {
+                        if (oe.getErrorCode() == 2053) {
+                            //oe.printStackTrace();
+                            println(" already exists!");
+                        } else {
+                            println(String.format(" ERROR (%d: %s): %s", oe.getErrorCode(), oe.getMessage(), indexSpec));
+                            //throw oe;
+                        }
+                        //System.out.println(oe.getErrorCode()+" "+oe.getMessage());
+                    } catch (Exception e) {
+                        //System.out.println("ARGH "+e.getClass().getName());
+                        //e.printStackTrace();
+                        throw e;
+                    }
+                }
+            }
+        } else {
+            if (!name.contains("$**")) {
+                final String indexSpec = key.spatial ?
+                        String.format("{\"name\": \"%s\", \"spatial\": \"%s\"}", collectionName + "$" + name, key.columns.get(0).name)
+                        :
+                        String.format("{\"name\": \"%s\", \"fields\": [%s], \"unique\": %s}", collectionName + "$" + name, getCreateIndexColumns(), unique);
 
                 try {
                     final long start = System.currentTimeMillis();
-                    // System.out.println("\n"+indexSpec);
-
-                    oracleCollection.admin().createIndex(db.createDocumentFromString(indexSpec));
+                    println("\n" + indexSpec);
                     final long end = System.currentTimeMillis();
 
-                    println(" OK ("+(end - start)+" ms)" );
-                } catch (OracleException oe) {
-                    if (oe.getErrorCode() == 2053) {
-                        oe.printStackTrace();
-                        println(" already exists!");
-                    } else {
-                        throw oe;
-                    }
-                    //System.out.println(oe.getErrorCode()+" "+oe.getMessage());
+                    println(" OK (" + (end - start) + " ms)");
                 } catch (Exception e) {
                     //e.printStackTrace();
                     throw e;
@@ -117,13 +142,13 @@ public class MetadataIndex {
 //        }
 
         try (Connection c = pds.getConnection()) {
-            try (Statement s=c.createStatement()) {
+            try (Statement s = c.createStatement()) {
                 //final String indexSpec = String.format("{\"name\": \"%s\", \"dataguide\": \"off\"}", collectionName+"_search_index" );
 
                 try {
                     final long start = System.currentTimeMillis();
                     s.execute(String.format("CREATE SEARCH INDEX %s$search_index ON %s (json_document) FOR JSON " +
-                            "PARAMETERS('DATAGUIDE OFF SYNC(MANUAL)')",collectionName,collectionName));
+                            "PARAMETERS('DATAGUIDE OFF SYNC(MANUAL)')", collectionName, collectionName));
 //                    s.execute(String.format("CREATE SEARCH INDEX %s_search_index ON %s (json_document) FOR JSON " +
 //                            "PARAMETERS('DATAGUIDE OFF SYNC(every \"freq=secondly;interval=10\" MEMORY 2G parallel 6)')",collectionName,collectionName));
                     final long end = System.currentTimeMillis();

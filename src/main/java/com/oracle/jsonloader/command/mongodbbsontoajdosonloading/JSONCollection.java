@@ -140,6 +140,10 @@ public class JSONCollection implements BlockingQueueCallback {
 
 
         // Manage indexes
+        createAllIndexes(mustHaveASearchIndex);
+    }
+
+    private void createAllIndexes(boolean mustHaveASearchIndex) throws Exception {
         println(String.format("\t- found %d index(es)", mongoDBMetadata.getIndexes().length));
 
         for (MetadataIndex index : mongoDBMetadata.getIndexes()) {
@@ -149,6 +153,9 @@ public class JSONCollection implements BlockingQueueCallback {
                 println("\t\t. " + index.getName() + ": (a JSON search index has already been created)");
             } else if (index.getKey().text) {
                 println("\t\t. " + index.getName() + ": (a JSON search index has already been created)");
+            } else if(index.getKey().spatial) {
+                print("\t\t. " + index.getName() + " (spatial/2dsphere): creating it ...");
+                index.createIndex(name, pds);
             } else {
                 print("\t\t. " + index.getName() + ": creating it ...");
                 index.createIndex(name, pds);
@@ -158,6 +165,12 @@ public class JSONCollection implements BlockingQueueCallback {
         if (mustHaveASearchIndex) {
             System.out.println("\t\t. " + name + "$search_index" + String.format(": you will need to synchronize it with:\n\t\t\tbegin\n\t\t\t\tCTX_DDL.SYNC_INDEX(idx_name => '%s$search_index', memory => '512M', parallel_degree => 6, locking => CTX_DDL.LOCK_NOWAIT);\n\t\t\tend;\n\t\t\t/",name));
         }
+    }
+
+    public static void main(String[] args) throws Throwable {
+        JSONCollection j = new JSONCollection("reels", new File("test.metadata.json"), null);
+        j.loadMongoDBMetadataContent();
+        j.createAllIndexes(false);
     }
 
     private void loadMongoDBMetadataContent() {

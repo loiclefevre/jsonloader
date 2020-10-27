@@ -82,16 +82,16 @@ public class BSONFileProducer implements Runnable {
                         batch.add(data);
                     } catch (EOFException eof) {
                         // Managing end of file!
+                        //System.out.println("Passing a batch of "+batch.size()+" bsons");
                         if (batch.size() > 0) {
-                            //System.out.println("Passing a batch of "+batch.size()+" bsons");
                             queue.put(batch);
+                        }
 
-                            if (i == dataFiles.size() - 1) {
-                                callback.addProduced(batch.size(), readSize, true);
-                                for (int nOC = 0; nOC < numberOfConsumers; nOC++) queue.put(new ArrayList<>());
-                            } else {
-                                callback.addProduced(batch.size(), readSize, false);
-                            }
+                        if (i == dataFiles.size() - 1) {
+                            callback.addProduced(batch.size(), readSize, true);
+                            for (int nOC = 0; nOC < numberOfConsumers; nOC++) queue.put(new ArrayList<>());
+                        } else {
+                            callback.addProduced(batch.size(), readSize, false);
                         }
 
                         break;

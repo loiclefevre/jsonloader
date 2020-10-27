@@ -33,6 +33,12 @@ public class MetadataKeyDeserializer extends StdDeserializer<MetadataKey> {
 
             //System.out.println(f.getKey()+": "+f.getValue().getClass().getName());
 
+            if(f.getValue().isTextual() && "2dsphere".equals(f.getValue().textValue())) {
+                mKey.addIndexColumn(f.getKey(),true);
+                mKey.spatial = true;
+                continue;
+            }
+
             if(f.getValue().isInt()) {
                 mKey.addIndexColumn(f.getKey(),f.getValue().asInt() == 1);
                 continue;
