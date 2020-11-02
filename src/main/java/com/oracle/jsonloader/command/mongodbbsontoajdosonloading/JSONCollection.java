@@ -62,12 +62,6 @@ public class JSONCollection implements BlockingQueueCallback {
      * @throws Exception
      */
     public void load(int cores) throws Exception {
-        println("\t- now loading data using " + cores + " parallel thread(s)");
-        final BlockingQueue<List<byte[]>> queue = new LinkedBlockingQueue<>(cores == 1 ? 1 : cores - 1);
-
-        final CountDownLatch producerCountDownLatch = new CountDownLatch(1);
-        final CountDownLatch consumerCountDownLatch = new CountDownLatch(cores);
-
         // ensure collection exists!
         createSODACollectionIfNotExists(name);
 
@@ -91,53 +85,59 @@ public class JSONCollection implements BlockingQueueCallback {
             MetadataIndex.createJSONSearchIndex(name, pds);
         }
 
+        if(dataFiles.size() > 0) {
+            println("\t- now loading data using " + cores + " parallel thread(s)");
+            final BlockingQueue<List<byte[]>> queue = new LinkedBlockingQueue<>(cores == 1 ? 1 : cores - 1);
 
-        // now load data!
-        long producerStart = System.currentTimeMillis();
-        new Thread(new BSONFileProducer(queue, dataFiles, cores, producerCountDownLatch, this)).start();
+            final CountDownLatch producerCountDownLatch = new CountDownLatch(1);
+            final CountDownLatch consumerCountDownLatch = new CountDownLatch(cores);
 
-        long consumersStart = System.currentTimeMillis();
-        for (int j = 0; j < cores; j++) {
-            new Thread(new BSONFileConsumer(name, queue, pds, consumerCountDownLatch, this, true)).start();
-        }
+            // now load data!
+            long producerStart = System.currentTimeMillis();
+            new Thread(new BSONFileProducer(queue, dataFiles, cores, producerCountDownLatch, this)).start();
 
-        boolean producerDone = false;
-        boolean consumersDone = false;
-
-        final long TIMEOUT = 500L;
-
-        try {
-
-            while (!(producerDone && consumersDone)) {
-
-                //System.out.println("Waiting for producer...");
-                if (!producerDone) {
-                    producerDone = producerCountDownLatch.await(TIMEOUT, TimeUnit.MILLISECONDS);
-                }
-                //System.out.println("Waiting for consumers...");
-                if (!consumersDone) {
-                    consumersDone = consumerCountDownLatch.await(TIMEOUT, TimeUnit.MILLISECONDS);
-                }
-
-                final long curTime = System.currentTimeMillis();
-                long producerDuration = (producerEndTime == 0 ? curTime : producerEndTime) - producerStart;
-
-                //System.out.println("producerDuration=" + producerEndTime + " / " + curTime + " / " + producerStart);
-
-                long consumersDuration = (consumersEndTime == 0 ? curTime : consumersEndTime) - consumersStart;
-                print(String.format("\t- read %d (%.0f d/s, %.1f MB/s) >> stored %d (%.0f d/s, %.1f MB/s)",
-                        produced, 1000d * (double) produced / (double) producerDuration,
-                        1000d * ((double) readSize / (1024.0 * 1024.0)) / (double) producerDuration,
-                        consumed, 1000d * (double) consumed / (double) consumersDuration,
-                        1000d * ((double) storedSize / (1024.0 * 1024.0)) / (double) consumersDuration));
+            long consumersStart = System.currentTimeMillis();
+            for (int j = 0; j < cores; j++) {
+                new Thread(new BSONFileConsumer(name, queue, pds, consumerCountDownLatch, this, true)).start();
             }
-            println(String.format("\n  . Collection %s loaded with success (read %.1f MB, stored %.1f MB, comp. ratio x %.2f).",
-                    name, (double) readSize / (1024.0 * 1024.0),
-                    (double) storedSize / (1024.0 * 1024.0)
-                    , (double) readSize / (double) storedSize));
-        } catch (InterruptedException ignored) {
-        }
 
+            boolean producerDone = false;
+            boolean consumersDone = false;
+
+            final long TIMEOUT = 500L;
+
+            try {
+
+                while (!(producerDone && consumersDone)) {
+
+                    //System.out.println("Waiting for producer...");
+                    if (!producerDone) {
+                        producerDone = producerCountDownLatch.await(TIMEOUT, TimeUnit.MILLISECONDS);
+                    }
+                    //System.out.println("Waiting for consumers...");
+                    if (!consumersDone) {
+                        consumersDone = consumerCountDownLatch.await(TIMEOUT, TimeUnit.MILLISECONDS);
+                    }
+
+                    final long curTime = System.currentTimeMillis();
+                    long producerDuration = (producerEndTime == 0 ? curTime : producerEndTime) - producerStart;
+
+                    //System.out.println("producerDuration=" + producerEndTime + " / " + curTime + " / " + producerStart);
+
+                    long consumersDuration = (consumersEndTime == 0 ? curTime : consumersEndTime) - consumersStart;
+                    print(String.format("\t- read %d (%.0f d/s, %.1f MB/s) >> stored %d (%.0f d/s, %.1f MB/s)",
+                            produced, 1000d * (double) produced / (double) producerDuration,
+                            1000d * ((double) readSize / (1024.0 * 1024.0)) / (double) producerDuration,
+                            consumed, 1000d * (double) consumed / (double) consumersDuration,
+                            1000d * ((double) storedSize / (1024.0 * 1024.0)) / (double) consumersDuration));
+                }
+                println(String.format("\n  . Collection %s loaded with success (read %.1f MB, stored %.1f MB, comp. ratio x %.2f).",
+                        name, (double) readSize / (1024.0 * 1024.0),
+                        (double) storedSize / (1024.0 * 1024.0)
+                        , (double) readSize / (double) storedSize));
+            } catch (InterruptedException ignored) {
+            }
+        }
 
         // Manage indexes
         createAllIndexes(mustHaveASearchIndex);
@@ -168,7 +168,7 @@ public class JSONCollection implements BlockingQueueCallback {
     }
 
     public static void main(String[] args) throws Throwable {
-        JSONCollection j = new JSONCollection("reels", new File("test.metadata.json"), null);
+        JSONCollection j = new JSONCollection("emails", new File("emails.metadata.json"), null);
         j.loadMongoDBMetadataContent();
         j.createAllIndexes(false);
     }
