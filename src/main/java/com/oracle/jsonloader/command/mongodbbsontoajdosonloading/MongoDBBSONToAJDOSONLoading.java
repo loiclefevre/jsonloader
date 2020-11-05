@@ -2,6 +2,10 @@ package com.oracle.jsonloader.command.mongodbbsontoajdosonloading;
 
 import com.oracle.jsonloader.exception.*;
 import oracle.jdbc.OracleConnection;
+import oracle.soda.OracleCollection;
+import oracle.soda.OracleDatabase;
+import oracle.soda.OracleDocument;
+import oracle.soda.rdbms.OracleRDBMSClient;
 import oracle.ucp.jdbc.PoolDataSource;
 import oracle.ucp.jdbc.PoolDataSourceFactory;
 
@@ -56,6 +60,9 @@ public class MongoDBBSONToAJDOSONLoading {
         try {
             print("Initializing connection pool ...");
             pds = initializeConnectionPool(ajdConnectionService, user, password, cores);
+
+            //test(pds);
+
             println(" OK");
 
             println("Collections:");
@@ -76,6 +83,54 @@ public class MongoDBBSONToAJDOSONLoading {
         } catch (Throwable t) {
             throw new UnknownException(ErrorCode.Unknown, "Unhandled error", t);
         }
+    }
+
+    private void test(PoolDataSource pds) {
+        OracleConnection conn = null;
+
+        try {
+            conn = (OracleConnection) pds.getConnection();
+            OracleRDBMSClient cl = new OracleRDBMSClient();
+
+            // Get a database.
+            OracleDatabase db = cl.getDatabase(conn);
+
+            OracleCollection col = db.admin().createCollection("myCol");
+
+            // Point at Long Beach
+            String docStr1 = "{\"location\" : {\"type\": \"Point\", \"coordinates\": [33.7243,-118.1579]} }";
+
+            // LineString near Las Vegas
+            String docStr2 = "{\"location\" : {\"type\" : \"LineString\", \"coordinates\" : " +
+                    "[[36.1290,-115.1037], [35.0869,-114.9499], [36.0846,-115.3234]]} }";
+
+            // Polygon near Phoenix
+            String docStr3 = "{\"location\" : {\"type\" : \"Polygon\", \"coordinates\" : " +
+                    "[[[33.4222,-112.0605], [33.3855,-112.2253], [33.3121,-112.1044], [33.3305,-111.8737], " +
+                    "[33.4222,-112.0605]]]} }";
+
+            String key1, key2, key3;
+            OracleDocument filterDoc = null, doc = null;
+
+            doc = col.insertAndGet(db.createDocumentFromString(docStr1));
+            key1 = doc.getKey();
+            doc = col.insertAndGet(db.createDocumentFromString(docStr2));
+            key2 = doc.getKey();
+            doc = col.insertAndGet(db.createDocumentFromString(docStr3));
+            key3 = doc.getKey();
+
+            // create spatial index with mixed case index name
+            String indexSpec = null, indexName = "locationIndex";
+            indexSpec = "{\"name\" : \"" + indexName + "\", \"spatial\" : \"location\"}";
+            col.admin().createIndex(db.createDocumentFromString(indexSpec));
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        System.exit(-1000);
     }
 
     private PoolDataSource initializeConnectionPool(String ajdConnectionService, String user, String password, int cores) throws SQLException, IOException {

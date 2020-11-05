@@ -20,6 +20,7 @@ public class BSONFileConsumer implements Runnable {
     private final CountDownLatch consumerCountDownLatch;
     private final BlockingQueueCallback callback;
     private final boolean outputOsonFormat;
+    private MyBSONDecoder decoder;
 
     public BSONFileConsumer(String collectionName, BlockingQueue<List<byte[]>> queue,
                             PoolDataSource pds, CountDownLatch consumerCountDownLatch,
@@ -34,7 +35,7 @@ public class BSONFileConsumer implements Runnable {
 
     public void run() {
         try {
-            final MyBSONDecoder decoder = new MyBSONDecoder(outputOsonFormat);
+            decoder = new MyBSONDecoder(outputOsonFormat);
             long count = 0;
             long bsonSize = 0;
             long osonSize = 0;
@@ -88,7 +89,7 @@ public class BSONFileConsumer implements Runnable {
 
                 final OracleRDBMSClient cl = new OracleRDBMSClient(props);
                 final OracleDatabase db = cl.getDatabase(c);
-                final OracleCollection collection = db.openCollection(collectionName);
+                final OracleCollection collection = db.openCollection(collectionName.toUpperCase());
 
                 //try (PreparedStatement p = c.prepareStatement("insert /*+ append */ into " + collectionName + " (ID,JSON_DOCUMENT,VERSION) values (?,?,'1')")) {
                 final List<OracleDocument> batchDocuments = new ArrayList<>(MongoDBBSONToAJDOSONLoading.BATCH_SIZE);
@@ -187,5 +188,27 @@ public class BSONFileConsumer implements Runnable {
             consumerCountDownLatch.countDown();
         }
 
+    }
+
+    public void mergeMaxLengths(Map<String, Integer> aggregatedMaxLengths) {
+        final Map<String, Integer> maxLengths = this.decoder.getMaxLengths();
+        for(String key:maxLengths.keySet()) {
+            if(aggregatedMaxLengths.containsKey(key)) {
+                aggregatedMaxLengths.put(key, Math.max(maxLengths.get(key), aggregatedMaxLengths.get(key)));
+            } else {
+                aggregatedMaxLengths.put(key, maxLengths.get(key));
+            }
+        }
+    }
+
+    public void mergeFieldsDataTypes(Map<String, Set<String>> aggregatedFieldsDataTypes) {
+        final Map<String, Set<String>> fieldsDataTypes = this.decoder.getFieldsDataTypes();
+        for(String key:fieldsDataTypes.keySet()) {
+            if(aggregatedFieldsDataTypes.containsKey(key)) {
+                aggregatedFieldsDataTypes.get(key).addAll(fieldsDataTypes.get(key));
+            } else {
+                aggregatedFieldsDataTypes.put(key, fieldsDataTypes.get(key));
+            }
+        }
     }
 }

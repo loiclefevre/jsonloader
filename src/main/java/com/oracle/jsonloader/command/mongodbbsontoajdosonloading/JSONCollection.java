@@ -15,9 +15,7 @@ import oracle.ucp.jdbc.PoolDataSource;
 
 import java.io.*;
 import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -85,6 +83,8 @@ public class JSONCollection implements BlockingQueueCallback {
             MetadataIndex.createJSONSearchIndex(name, pds);
         }
 
+        final List<BSONFileConsumer> consumers = new ArrayList<>();
+
         if(dataFiles.size() > 0) {
             println("\t- now loading data using " + cores + " parallel thread(s)");
             final BlockingQueue<List<byte[]>> queue = new LinkedBlockingQueue<>(cores == 1 ? 1 : cores - 1);
@@ -98,7 +98,9 @@ public class JSONCollection implements BlockingQueueCallback {
 
             long consumersStart = System.currentTimeMillis();
             for (int j = 0; j < cores; j++) {
-                new Thread(new BSONFileConsumer(name, queue, pds, consumerCountDownLatch, this, true)).start();
+                final BSONFileConsumer consumer = new BSONFileConsumer(name, queue, pds, consumerCountDownLatch, this, true);
+                new Thread(consumer).start();
+                consumers.add(consumer);
             }
 
             boolean producerDone = false;
@@ -139,11 +141,29 @@ public class JSONCollection implements BlockingQueueCallback {
             }
         }
 
+        // Merge consumers string values metadata (maxLengths)
+        final Map<String,Integer> maxLengths = new HashMap<>();
+        final Map<String,Set<String>> fieldsDataTypes = new HashMap<>();
+
+
+        for(BSONFileConsumer bsonFileConsumer : consumers) {
+            bsonFileConsumer.mergeMaxLengths(maxLengths);
+            bsonFileConsumer.mergeFieldsDataTypes(fieldsDataTypes);
+        }
+
+/*        for(String path:fieldsDataTypes.keySet()) {
+            final Set<String> types = fieldsDataTypes.get(path);
+            System.out.println(path + ":");
+            for(String t:types) {
+                System.out.println("- "+t);
+            }
+        }
+*/
         // Manage indexes
-        createAllIndexes(mustHaveASearchIndex);
+        createAllIndexes(mustHaveASearchIndex,maxLengths,fieldsDataTypes);
     }
 
-    private void createAllIndexes(boolean mustHaveASearchIndex) throws Exception {
+    private void createAllIndexes(boolean mustHaveASearchIndex, final Map<String, Integer> maxLengths, final Map<String, Set<String>> fieldsDataTypes) throws Exception {
         println(String.format("\t- found %d index(es)", mongoDBMetadata.getIndexes().length));
 
         for (MetadataIndex index : mongoDBMetadata.getIndexes()) {
@@ -155,10 +175,10 @@ public class JSONCollection implements BlockingQueueCallback {
                 println("\t\t. " + index.getName() + ": (a JSON search index has already been created)");
             } else if(index.getKey().spatial) {
                 print("\t\t. " + index.getName() + " (spatial/2dsphere): creating it ...");
-                index.createIndex(name, pds);
+                index.createIndex(name, pds, maxLengths, fieldsDataTypes);
             } else {
                 print("\t\t. " + index.getName() + ": creating it ...");
-                index.createIndex(name, pds);
+                index.createIndex(name, pds, maxLengths, fieldsDataTypes);
             }
         }
 
@@ -168,9 +188,9 @@ public class JSONCollection implements BlockingQueueCallback {
     }
 
     public static void main(String[] args) throws Throwable {
-        JSONCollection j = new JSONCollection("emails", new File("emails.metadata.json"), null);
+        JSONCollection j = new JSONCollection(args[0], new File(args[0]+".metadata.json"), null);
         j.loadMongoDBMetadataContent();
-        j.createAllIndexes(false);
+        j.createAllIndexes(false, new HashMap<>(), new HashMap<>());
     }
 
     private void loadMongoDBMetadataContent() {
@@ -197,7 +217,7 @@ public class JSONCollection implements BlockingQueueCallback {
         try (Connection c = pds.getConnection()) {
             OracleDatabase db = cl.getDatabase(c);
 
-            OracleCollection oracleCollection = db.openCollection(name);
+            OracleCollection oracleCollection = db.openCollection(name.toUpperCase());
             if (oracleCollection == null) {
                 System.out.print("\t- creating SODA collection " + name + " ...");
                 System.out.flush();
@@ -210,7 +230,7 @@ public class JSONCollection implements BlockingQueueCallback {
                                     "\"creationTimeColumn\":{\"name\":\"CREATED_ON\"}," +
                                     "\"readOnly\":false}"));
                 } else {
-                    db.admin().createCollection(name);
+                    db.admin().createCollection(name.toUpperCase());
                 }
                 println(" OK");
             } else {
