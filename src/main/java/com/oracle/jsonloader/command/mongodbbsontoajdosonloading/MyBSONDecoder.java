@@ -368,8 +368,12 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
 
         if (isInsideArray())
             gen.write(id.toString());
-        else
+        else {
             gen.write(name, id.toString());
+
+            final String path = getJSONPath(name);
+            maxLengths.put(path, 24);
+        }
     }
 
     @Override
