@@ -19,6 +19,7 @@ import static com.oracle.jsonloader.util.Console.println;
 
 public class MetadataIndex {
 
+    public static int INDEXED_FIELD_MAX_LENGTH_WARNING = 100;
     private static Logger log = LoggerFactory.getLogger("IndexBuilder");
 
     private String name;
@@ -270,6 +271,12 @@ public class MetadataIndex {
 
                    case "string":
                        final String dataLength =  (String)oracleMetadata.get(collectionName+"."+ic.name+".maxlength");
+
+                       if(Integer.parseInt(dataLength) > INDEXED_FIELD_MAX_LENGTH_WARNING) {
+                           log.warn("For collection "+collectionName+", index "+name+" has a string field \""+ic.name+"\" with a maxlength ("+dataLength+" bytes, defined in oracle metadata file) strictly larger than the threshold "+INDEXED_FIELD_MAX_LENGTH_WARNING);
+                           warning = true;
+                       }
+
                        s.append("{\"path\": \"").append(ic.name).append("\", \"order\": \"").append(ic.asc ? "asc" : "desc").append("\", \"datatype\": \"string\", \"maxlength\": ").append(dataLength).append("}");
                        break;
 
@@ -294,6 +301,10 @@ public class MetadataIndex {
                             //s.append("{\"path\": \"").append(ic.name).append("\", \"order\": \"").append(ic.asc ? "asc" : "desc").append("\", \"datatype\": \"number\"}");
                         } else {
                             if (maxLengths.containsKey(ic.name)) {
+                                if(maxLengths.get(ic.name) > INDEXED_FIELD_MAX_LENGTH_WARNING) {
+                                    log.warn("For collection "+collectionName+", index "+name+" has a string field \""+ic.name+"\" with a maxlength ("+maxLengths.get(ic.name)+" bytes) strictly larger than the threshold "+INDEXED_FIELD_MAX_LENGTH_WARNING);
+                                    warning = true;
+                                }
                                 s.append("{\"path\": \"").append(ic.name).append("\", \"order\": \"").append(ic.asc ? "asc" : "desc").append("\", \"datatype\": \"string\", \"maxlength\": ").append(maxLengths.get(ic.name)).append("}");
                             } else {
                                 s.append("{\"path\": \"").append(ic.name).append("\", \"order\": \"").append(ic.asc ? "asc" : "desc").append("\"}");
@@ -301,12 +312,20 @@ public class MetadataIndex {
                         }
                     } else {
                         if (maxLengths.containsKey(ic.name)) {
+                            if(maxLengths.get(ic.name) > INDEXED_FIELD_MAX_LENGTH_WARNING) {
+                                log.warn("For collection "+collectionName+", index "+name+" has a string field \""+ic.name+"\" with a maxlength ("+maxLengths.get(ic.name)+" bytes) strictly larger than the threshold "+INDEXED_FIELD_MAX_LENGTH_WARNING);
+                                warning = true;
+                            }
                             s.append("{\"path\": \"").append(ic.name).append("\", \"order\": \"").append(ic.asc ? "asc" : "desc").append("\", \"datatype\": \"string\", \"maxlength\": ").append(maxLengths.get(ic.name)).append("}");
                         } else {
                             s.append("{\"path\": \"").append(ic.name).append("\", \"order\": \"").append(ic.asc ? "asc" : "desc").append("\", \"datatype\": \"string\"}");
                         }
                     }
                 } else if (maxLengths.containsKey(ic.name)) {
+                    if(maxLengths.get(ic.name) > INDEXED_FIELD_MAX_LENGTH_WARNING) {
+                        log.warn("For collection "+collectionName+", index "+name+" has a field \""+ic.name+"\" with a maxlength ("+maxLengths.get(ic.name)+" bytes) strictly larger than the threshold "+INDEXED_FIELD_MAX_LENGTH_WARNING);
+                        warning = true;
+                    }
                     s.append("{\"path\": \"").append(ic.name).append("\", \"order\": \"").append(ic.asc ? "asc" : "desc").append("\", \"maxlength\": ").append(maxLengths.get(ic.name)).append("}");
                 } else {
                     s.append("{\"path\": \"").append(ic.name).append("\", \"order\": \"").append(ic.asc ? "asc" : "desc").append("\"}");

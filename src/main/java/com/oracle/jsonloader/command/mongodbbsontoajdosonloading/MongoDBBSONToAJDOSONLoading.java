@@ -1,6 +1,7 @@
 package com.oracle.jsonloader.command.mongodbbsontoajdosonloading;
 
 import com.oracle.jsonloader.exception.*;
+import com.oracle.jsonloader.model.MetadataIndex;
 import oracle.jdbc.OracleConnection;
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleDatabase;
@@ -8,6 +9,8 @@ import oracle.soda.OracleDocument;
 import oracle.soda.rdbms.OracleRDBMSClient;
 import oracle.ucp.jdbc.PoolDataSource;
 import oracle.ucp.jdbc.PoolDataSourceFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -21,6 +24,8 @@ import static com.oracle.jsonloader.util.Console.print;
 import static com.oracle.jsonloader.util.Console.println;
 
 public class MongoDBBSONToAJDOSONLoading {
+    private static Logger log = LoggerFactory.getLogger("IndexBuilder");
+
     public static void main(final String[] args) throws JSONLoaderException {
         new MongoDBBSONToAJDOSONLoading(args).run();
     }
@@ -60,6 +65,16 @@ public class MongoDBBSONToAJDOSONLoading {
 
             try {
                 oracleMetadata.load(new FileInputStream(oracleMetadataFile));
+
+                if(oracleMetadata.containsKey("index.maxlength_warning_threshold")) {
+                    try {
+                        MetadataIndex.INDEXED_FIELD_MAX_LENGTH_WARNING = Integer.parseInt((String) oracleMetadata.get("index.maxlength_warning_threshold"));
+                    }
+                    catch(NumberFormatException nfe) {
+                        log.warn("index.maxlength_warning_threshold value is not a number: "+oracleMetadata.get("index.maxlength_warning_threshold"));
+                        log.warn("index.maxlength_warning_threshold set to default value 100");
+                    }
+                }
             } catch (IOException e) {
                 System.err.println("Can't load file "+oracleMetadataFile+"!");
                 e.printStackTrace();
