@@ -20,11 +20,13 @@ public class BSONFileConsumer implements Runnable {
     private final CountDownLatch consumerCountDownLatch;
     private final BlockingQueueCallback callback;
     private final boolean outputOsonFormat;
+    private final int id;
     private MyBSONDecoder decoder;
 
-    public BSONFileConsumer(String collectionName, BlockingQueue<List<byte[]>> queue,
+    public BSONFileConsumer(int id, String collectionName, BlockingQueue<List<byte[]>> queue,
                             PoolDataSource pds, CountDownLatch consumerCountDownLatch,
                             BlockingQueueCallback callback, boolean outputOsonFormat) {
+        this.id = id;
         this.collectionName = collectionName;
         this.queue = queue;
         this.pds = pds;
@@ -35,7 +37,7 @@ public class BSONFileConsumer implements Runnable {
 
     public void run() {
         try {
-            decoder = new MyBSONDecoder(outputOsonFormat);
+            decoder = (id == 0 ? new MyBSONDecoderWithMetadata(outputOsonFormat) : new MyBSONDecoder(outputOsonFormat));
             long count = 0;
             long bsonSize = 0;
             long osonSize = 0;
@@ -191,24 +193,34 @@ public class BSONFileConsumer implements Runnable {
     }
 
     public void mergeMaxLengths(Map<String, Integer> aggregatedMaxLengths) {
-        final Map<String, Integer> maxLengths = this.decoder.getMaxLengths();
-        for(String key:maxLengths.keySet()) {
-            if(aggregatedMaxLengths.containsKey(key)) {
-                aggregatedMaxLengths.put(key, Math.max(maxLengths.get(key), aggregatedMaxLengths.get(key)));
-            } else {
-                aggregatedMaxLengths.put(key, maxLengths.get(key));
+        if(id == 0) {
+            final Map<String, Integer> maxLengths = ((MyBSONDecoderWithMetadata)this.decoder).getMaxLengths();
+            for (String key : maxLengths.keySet()) {
+                if (aggregatedMaxLengths.containsKey(key)) {
+                    aggregatedMaxLengths.put(key, Math.max(maxLengths.get(key), aggregatedMaxLengths.get(key)));
+                } else {
+                    aggregatedMaxLengths.put(key, maxLengths.get(key));
+                }
             }
         }
     }
 
     public void mergeFieldsDataTypes(Map<String, Set<String>> aggregatedFieldsDataTypes) {
-        final Map<String, Set<String>> fieldsDataTypes = this.decoder.getFieldsDataTypes();
-        for(String key:fieldsDataTypes.keySet()) {
-            if(aggregatedFieldsDataTypes.containsKey(key)) {
-                aggregatedFieldsDataTypes.get(key).addAll(fieldsDataTypes.get(key));
-            } else {
-                aggregatedFieldsDataTypes.put(key, fieldsDataTypes.get(key));
+        if(id == 0) {
+            final Map<String, Set<String>> fieldsDataTypes = ((MyBSONDecoderWithMetadata)this.decoder).getFieldsDataTypes();
+            for (String key : fieldsDataTypes.keySet()) {
+                if (aggregatedFieldsDataTypes.containsKey(key)) {
+                    aggregatedFieldsDataTypes.get(key).addAll(fieldsDataTypes.get(key));
+                } else {
+                    aggregatedFieldsDataTypes.put(key, fieldsDataTypes.get(key));
+                }
             }
+        }
+    }
+
+    public void mergeCantIndex(Set<String> aggregatedCantIndex) {
+        if(id == 0) {
+            aggregatedCantIndex.addAll(((MyBSONDecoderWithMetadata)this.decoder).getCantIndex());
         }
     }
 }

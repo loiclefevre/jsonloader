@@ -17,23 +17,20 @@ import java.util.*;
 // TODO: push vs pull?
 public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
 
-    private static final boolean DEBUG = false;
-    private final boolean outputOsonFormat;
+    protected static final boolean DEBUG = false;
+    protected final boolean outputOsonFormat;
 
-    private Object root;
-    private final LinkedList<BSONObject> stack = new LinkedList<>();
-    private final LinkedList<String> nameStack = new LinkedList<>();
-    private final LinkedList<Boolean> arrayStack = new LinkedList<>();
+    protected Object root;
+    protected final LinkedList<BSONObject> stack = new LinkedList<>();
+    protected final LinkedList<String> nameStack = new LinkedList<>();
+    protected final LinkedList<Boolean> arrayStack = new LinkedList<>();
 
-    private final OracleJsonFactory factory = new OracleJsonFactory();
+    protected final OracleJsonFactory factory = new OracleJsonFactory();
     // oson output
-    private final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    private JsonGenerator gen;
-    private int bsonLength;
-    private String oid;
-
-    private final Map<String,Integer> maxLengths = new HashMap<>();
-    private final Map<String,Set<String>> fieldsDataTypes = new HashMap<>();
+    protected final ByteArrayOutputStream out = new ByteArrayOutputStream();
+    protected JsonGenerator gen;
+    protected int bsonLength;
+    protected String oid;
 
     public MyBSONDecoder(boolean outputOsonFormat) {
         super();
@@ -92,8 +89,12 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
         }
     }
 
-    private boolean isInsideArray() {
+    protected boolean isInsideArray() {
         return this.arrayStack.getLast();
+    }
+
+    protected boolean isPartOfAnArrayPath() {
+        return arrayStack.contains(true);
     }
 
     @Override
@@ -115,7 +116,7 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
         }
     }
 
-    private String stacker() {
+    protected String stacker() {
         StringBuilder s = new StringBuilder();
         for (int i = 0; i < this.stack.size(); i++) {
             s.append("\t");
@@ -123,26 +124,6 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
         return s.toString();
     }
 
-    private final StringBuilder path = new StringBuilder();
-
-    private String getJSONPath(final String name) {
-        path.setLength(0);
-        for (int i = 0; i < this.nameStack.size(); i++) {
-            if (i > 0) {
-                path.append('.');
-            }
-            path.append(nameStack.get(i));
-        }
-
-        if(name != null) {
-            if(path.length()>0) {
-                path.append('.');
-            }
-            path.append(name);
-        }
-
-        return path.toString();
-    }
 
     @Override
     public Object objectDone() {
@@ -243,15 +224,6 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
             gen.write(value);
         else {
             gen.write(name, value);
-
-            final String path = getJSONPath(name);
-            if(fieldsDataTypes.containsKey(path)) {
-                fieldsDataTypes.get(path).add("number");
-            } else {
-                final Set<String> dataTypes = new HashSet<>();
-                dataTypes.add("number");
-                fieldsDataTypes.put(path, dataTypes);
-            }
         }
     }
 
@@ -261,15 +233,6 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
             gen.write(value);
         else {
             gen.write(name, value);
-
-            final String path = getJSONPath(name);
-            if(fieldsDataTypes.containsKey(path)) {
-                fieldsDataTypes.get(path).add("number");
-            } else {
-                final Set<String> dataTypes = new HashSet<>();
-                dataTypes.add("number");
-                fieldsDataTypes.put(path, dataTypes);
-            }
         }
     }
 
@@ -279,15 +242,6 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
             gen.write(value);
         else {
             gen.write(name, value);
-
-            final String path = getJSONPath(name);
-            if(fieldsDataTypes.containsKey(path)) {
-                fieldsDataTypes.get(path).add("number");
-            } else {
-                final Set<String> dataTypes = new HashSet<>();
-                dataTypes.add("number");
-                fieldsDataTypes.put(path, dataTypes);
-            }
         }
     }
 
@@ -297,15 +251,6 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
             gen.write(value.bigDecimalValue());
         else {
             gen.write(name, value.bigDecimalValue());
-
-            final String path = getJSONPath(name);
-            if(fieldsDataTypes.containsKey(path)) {
-                fieldsDataTypes.get(path).add("number");
-            } else {
-                final Set<String> dataTypes = new HashSet<>();
-                dataTypes.add("number");
-                fieldsDataTypes.put(path, dataTypes);
-            }
         }
     }
 
@@ -317,38 +262,12 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
             gen.write(name, new Date(millis).toInstant().toString());
     }
 
-    public Map<String, Integer> getMaxLengths() {
-        return maxLengths;
-    }
-
-    public Map<String, Set<String>> getFieldsDataTypes() {
-        return fieldsDataTypes;
-    }
-
     @Override
     public void gotString(final String name, final String value) {
-        //System.out.println(getJSONPath(name)+"."+name+": "+value.length());
-
-
         if (isInsideArray())
             gen.write(value);
         else {
             gen.write(name, value);
-
-            final String path = getJSONPath(name);
-            if(maxLengths.containsKey(path)) {
-                maxLengths.put(path, Math.max(value.length(), maxLengths.get(path)));
-            } else {
-                maxLengths.put(path, value.length());
-            }
-
-            if(fieldsDataTypes.containsKey(path)) {
-                fieldsDataTypes.get(path).add("string");
-            } else {
-                final Set<String> dataTypes = new HashSet<>();
-                dataTypes.add("string");
-                fieldsDataTypes.put(path, dataTypes);
-            }
         }
     }
 
@@ -370,9 +289,6 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
             gen.write(id.toString());
         else {
             gen.write(name, id.toString());
-
-            final String path = getJSONPath(name);
-            maxLengths.put(path, 24);
         }
     }
 

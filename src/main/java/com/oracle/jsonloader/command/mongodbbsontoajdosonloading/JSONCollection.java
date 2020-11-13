@@ -59,7 +59,7 @@ public class JSONCollection implements BlockingQueueCallback {
      *
      * @throws Exception
      */
-    public void load(int cores) throws Exception {
+    public void load(int cores, Properties oracleMetadata) throws Exception {
         // ensure collection exists!
         createSODACollectionIfNotExists(name);
 
@@ -98,7 +98,7 @@ public class JSONCollection implements BlockingQueueCallback {
 
             long consumersStart = System.currentTimeMillis();
             for (int j = 0; j < cores; j++) {
-                final BSONFileConsumer consumer = new BSONFileConsumer(name, queue, pds, consumerCountDownLatch, this, true);
+                final BSONFileConsumer consumer = new BSONFileConsumer(j,name, queue, pds, consumerCountDownLatch, this, true);
                 new Thread(consumer).start();
                 consumers.add(consumer);
             }
@@ -144,11 +144,12 @@ public class JSONCollection implements BlockingQueueCallback {
         // Merge consumers string values metadata (maxLengths)
         final Map<String,Integer> maxLengths = new HashMap<>();
         final Map<String,Set<String>> fieldsDataTypes = new HashMap<>();
-
+        final Set<String> cantIndex = new HashSet<>();
 
         for(BSONFileConsumer bsonFileConsumer : consumers) {
             bsonFileConsumer.mergeMaxLengths(maxLengths);
             bsonFileConsumer.mergeFieldsDataTypes(fieldsDataTypes);
+            bsonFileConsumer.mergeCantIndex(cantIndex);
         }
 
 /*        for(String path:fieldsDataTypes.keySet()) {
@@ -160,10 +161,10 @@ public class JSONCollection implements BlockingQueueCallback {
         }
 */
         // Manage indexes
-        createAllIndexes(mustHaveASearchIndex,maxLengths,fieldsDataTypes);
+        createAllIndexes(mustHaveASearchIndex,maxLengths,fieldsDataTypes,cantIndex,oracleMetadata);
     }
 
-    private void createAllIndexes(boolean mustHaveASearchIndex, final Map<String, Integer> maxLengths, final Map<String, Set<String>> fieldsDataTypes) throws Exception {
+    private void createAllIndexes(boolean mustHaveASearchIndex, final Map<String, Integer> maxLengths, final Map<String, Set<String>> fieldsDataTypes, Set<String> cantIndex, Properties oracleMetadata) throws Exception {
         println(String.format("\t- found %d index(es)", mongoDBMetadata.getIndexes().length));
 
         for (MetadataIndex index : mongoDBMetadata.getIndexes()) {
@@ -175,10 +176,10 @@ public class JSONCollection implements BlockingQueueCallback {
                 println("\t\t. " + index.getName() + ": (a JSON search index has already been created)");
             } else if(index.getKey().spatial) {
                 print("\t\t. " + index.getName() + " (spatial/2dsphere): creating it ...");
-                index.createIndex(name, pds, maxLengths, fieldsDataTypes);
+                index.createIndex(name, pds, maxLengths, fieldsDataTypes, cantIndex, oracleMetadata);
             } else {
                 print("\t\t. " + index.getName() + ": creating it ...");
-                index.createIndex(name, pds, maxLengths, fieldsDataTypes);
+                index.createIndex(name, pds, maxLengths, fieldsDataTypes, cantIndex, oracleMetadata);
             }
         }
 
@@ -190,7 +191,7 @@ public class JSONCollection implements BlockingQueueCallback {
     public static void main(String[] args) throws Throwable {
         JSONCollection j = new JSONCollection(args[0], new File(args[0]+".metadata.json"), null);
         j.loadMongoDBMetadataContent();
-        j.createAllIndexes(false, new HashMap<>(), new HashMap<>());
+        j.createAllIndexes(false, new HashMap<>(), new HashMap<>(), new HashSet<>(), new Properties());
     }
 
     private void loadMongoDBMetadataContent() {

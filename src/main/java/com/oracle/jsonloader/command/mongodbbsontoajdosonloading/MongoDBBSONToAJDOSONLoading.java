@@ -10,10 +10,12 @@ import oracle.ucp.jdbc.PoolDataSource;
 import oracle.ucp.jdbc.PoolDataSourceFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import static com.oracle.jsonloader.util.Console.print;
 import static com.oracle.jsonloader.util.Console.println;
@@ -31,6 +33,8 @@ public class MongoDBBSONToAJDOSONLoading {
     private String ajdConnectionService;
     private String user;
     private String password;
+    private String oracleMetadataFilename = null;
+    private final Properties oracleMetadata = new Properties();
 
     public MongoDBBSONToAJDOSONLoading(String[] args) throws JSONLoaderException {
         analyzeCLIParameters(args);
@@ -46,6 +50,22 @@ public class MongoDBBSONToAJDOSONLoading {
 
         if (!dataDir.exists() && dataDir.isDirectory())
             throw new SourceDirectoryNotFoundException(dataDir.getAbsolutePath());
+
+        if(oracleMetadataFilename != null) {
+            final File oracleMetadataFile = new File(oracleMetadataFilename);
+            if(!oracleMetadataFile.exists()) {
+                System.out.println("Oracle metadata file "+oracleMetadataFile+" doesn't exist!");
+                System.exit(-1);
+            }
+
+            try {
+                oracleMetadata.load(new FileInputStream(oracleMetadataFile));
+            } catch (IOException e) {
+                System.err.println("Can't load file "+oracleMetadataFile+"!");
+                e.printStackTrace();
+                System.exit(-2);
+            }
+        }
 
         // Find all collection related metadata files being json or gzipped json
         final File[] metadataFiles = dataDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".metadata.json") || name.toLowerCase().endsWith(".metadata.json.gz"));
@@ -75,10 +95,12 @@ public class MongoDBBSONToAJDOSONLoading {
             }
 
             // Loading all collections
+            int collectionNumber = 1;
             for (JSONCollection c : collections) {
-                println("  . Loading " + c.name + "...");
+                println(String.format("  . Loading collection [%d/%d]: %s...", collectionNumber, collections.size(), c.name));
                 c.findDatafiles();
-                c.load(cores);
+                c.load(cores,oracleMetadata);
+                collectionNumber++;
             }
         } catch (Throwable t) {
             throw new UnknownException(ErrorCode.Unknown, "Unhandled error", t);
@@ -188,7 +210,9 @@ public class MongoDBBSONToAJDOSONLoading {
                     KEEP_MONGODB_OBJECTIDS = Boolean.parseBoolean(args[i]);
                     break;
 
-
+                case 8:
+                    oracleMetadataFilename = args[i];
+                    break;
 
             }
         }
@@ -199,5 +223,8 @@ public class MongoDBBSONToAJDOSONLoading {
         println("> Destination database user name: " + user);
         println("> JSON loading batch size       : " + BATCH_SIZE);
         println("> Keep MongoDB ObjectIDs        : " + KEEP_MONGODB_OBJECTIDS);
+        if(oracleMetadataFilename != null) {
+            println("> Oracle JSON Metadata file     : " + oracleMetadataFilename);
+        }
     }
 }
