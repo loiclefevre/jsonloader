@@ -257,7 +257,7 @@ public class MetadataIndex {
                     s.setLength(s.length() - 2);
                 }
 
-                log.warn("Field "+ic.name+" removed from the index definition: Multi-value index not yet supported for index " + name + " on field " + ic.name + " which path belongs to an array");
+                log.warn("For collection "+collectionName+", the field "+ic.name+" has been removed from the index definition: Multi-value index not yet supported for index " + name + " on field " + ic.name + " which path belongs to an array");
                 warning = true;
             }
             else
@@ -296,7 +296,7 @@ public class MetadataIndex {
                                 s.setLength(s.length() - 2);
                             }
 
-                            log.warn("Field "+ic.name+" removed from the index definition: Multi-value index not yet supported for index " + name + " on field " + ic.name + " which is an array");
+                            log.warn("For collection "+collectionName+", the field "+ic.name+" has been removed from the index definition: Multi-value index not yet supported for index " + name + " on field " + ic.name + " which is an array");
                             warning = true;
                             //s.append("{\"path\": \"").append(ic.name).append("\", \"order\": \"").append(ic.asc ? "asc" : "desc").append("\", \"datatype\": \"number\"}");
                         } else {

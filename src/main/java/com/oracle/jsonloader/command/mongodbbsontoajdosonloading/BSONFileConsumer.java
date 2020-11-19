@@ -37,7 +37,8 @@ public class BSONFileConsumer implements Runnable {
 
     public void run() {
         try {
-            decoder = (id == 0 ? new MyBSONDecoderWithMetadata(outputOsonFormat) : new MyBSONDecoder(outputOsonFormat));
+            //decoder = (id == 0 ? new MyBSONDecoderWithMetadata(outputOsonFormat) : new MyBSONDecoder(outputOsonFormat));
+            decoder = new MyBSONDecoderWithMetadata(outputOsonFormat);
             long count = 0;
             long bsonSize = 0;
             long osonSize = 0;
@@ -96,10 +97,10 @@ public class BSONFileConsumer implements Runnable {
                 //try (PreparedStatement p = c.prepareStatement("insert /*+ append */ into " + collectionName + " (ID,JSON_DOCUMENT,VERSION) values (?,?,'1')")) {
                 final List<OracleDocument> batchDocuments = new ArrayList<>(MongoDBBSONToAJDOSONLoading.BATCH_SIZE);
 
-                final Map<String,String> insertOptions = new HashMap<>();
+                final Map<String, String> insertOptions = new HashMap<>();
                 insertOptions.put("hint", "append");
 
-                if(MongoDBBSONToAJDOSONLoading.KEEP_MONGODB_OBJECTIDS) {
+                if (MongoDBBSONToAJDOSONLoading.KEEP_MONGODB_OBJECTIDS) {
                     while (true) {
                         final List<byte[]> batch = queue.take();
                         if (batch.size() == 0) {
@@ -131,7 +132,7 @@ public class BSONFileConsumer implements Runnable {
                         //System.out.println("Running batch...("+osonSize+")");
 
                         //p.executeLargeBatch();
-                        collection.insertAndGet(batchDocuments.iterator(),insertOptions);
+                        collection.insertAndGet(batchDocuments.iterator(), insertOptions);
 
                         batchDocuments.clear();
                         c.commit();
@@ -170,7 +171,7 @@ public class BSONFileConsumer implements Runnable {
                         //System.out.println("Running batch...("+osonSize+")");
 
                         //p.executeLargeBatch();
-                        collection.insertAndGet(batchDocuments.iterator(),insertOptions);
+                        collection.insertAndGet(batchDocuments.iterator(), insertOptions);
 
                         batchDocuments.clear();
                         c.commit();
@@ -193,34 +194,28 @@ public class BSONFileConsumer implements Runnable {
     }
 
     public void mergeMaxLengths(Map<String, Integer> aggregatedMaxLengths) {
-        if(id == 0) {
-            final Map<String, Integer> maxLengths = ((MyBSONDecoderWithMetadata)this.decoder).getMaxLengths();
-            for (String key : maxLengths.keySet()) {
-                if (aggregatedMaxLengths.containsKey(key)) {
-                    aggregatedMaxLengths.put(key, Math.max(maxLengths.get(key), aggregatedMaxLengths.get(key)));
-                } else {
-                    aggregatedMaxLengths.put(key, maxLengths.get(key));
-                }
+        final Map<String, Integer> maxLengths = ((MyBSONDecoderWithMetadata) this.decoder).getMaxLengths();
+        for (String key : maxLengths.keySet()) {
+            if (aggregatedMaxLengths.containsKey(key)) {
+                aggregatedMaxLengths.put(key, Math.max(maxLengths.get(key), aggregatedMaxLengths.get(key)));
+            } else {
+                aggregatedMaxLengths.put(key, maxLengths.get(key));
             }
         }
     }
 
     public void mergeFieldsDataTypes(Map<String, Set<String>> aggregatedFieldsDataTypes) {
-        if(id == 0) {
-            final Map<String, Set<String>> fieldsDataTypes = ((MyBSONDecoderWithMetadata)this.decoder).getFieldsDataTypes();
-            for (String key : fieldsDataTypes.keySet()) {
-                if (aggregatedFieldsDataTypes.containsKey(key)) {
-                    aggregatedFieldsDataTypes.get(key).addAll(fieldsDataTypes.get(key));
-                } else {
-                    aggregatedFieldsDataTypes.put(key, fieldsDataTypes.get(key));
-                }
+        final Map<String, Set<String>> fieldsDataTypes = ((MyBSONDecoderWithMetadata) this.decoder).getFieldsDataTypes();
+        for (String key : fieldsDataTypes.keySet()) {
+            if (aggregatedFieldsDataTypes.containsKey(key)) {
+                aggregatedFieldsDataTypes.get(key).addAll(fieldsDataTypes.get(key));
+            } else {
+                aggregatedFieldsDataTypes.put(key, fieldsDataTypes.get(key));
             }
         }
     }
 
     public void mergeCantIndex(Set<String> aggregatedCantIndex) {
-        if(id == 0) {
-            aggregatedCantIndex.addAll(((MyBSONDecoderWithMetadata)this.decoder).getCantIndex());
-        }
+        aggregatedCantIndex.addAll(((MyBSONDecoderWithMetadata) this.decoder).getCantIndex());
     }
 }

@@ -14,10 +14,9 @@ import javax.json.stream.JsonGenerator;
 import java.io.*;
 import java.util.*;
 
-// TODO: push vs pull?
 public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
 
-    protected static final boolean DEBUG = false;
+    protected static boolean DEBUG = false;
     protected final boolean outputOsonFormat;
 
     protected Object root;
@@ -396,13 +395,16 @@ public class MyBSONDecoder extends BasicBSONDecoder implements BSONCallback {
     public static void main(String[] args) throws Throwable {
         //InputStream in = new FileInputStream(new File("test.bson"));
         //InputStream in = new FileInputStream(new File("autoedit_countdown_tag.bson"));
-        InputStream in = new FileInputStream(new File("emails.bson"));
-
-        byte[] data = readNextBSONRawData(in);
+        InputStream in = new FileInputStream(new File("objectlabs-system.admin.collections.bson"));
 
         final MyBSONDecoder decoder = new MyBSONDecoder(true);
+        MyBSONDecoder.DEBUG = true;
 
-        final BSONObject obj = decoder.readObject(data);
+        while(true) {
+            byte[] data = readNextBSONRawData(in);
+            final BSONObject obj = decoder.readObject(data);
+            System.out.println(obj.get("id"));
+        }
     }
 
 

@@ -64,7 +64,7 @@ public class JSONCollection implements BlockingQueueCallback {
         createSODACollectionIfNotExists(name);
 
         // Load metadata file
-        println("\t- metadata file: " + metadata.getName());
+        //println("\t- metadata file: " + metadata.getName());
         loadMongoDBMetadataContent();
 
         boolean mustHaveASearchIndex = false;
@@ -86,7 +86,7 @@ public class JSONCollection implements BlockingQueueCallback {
         final List<BSONFileConsumer> consumers = new ArrayList<>();
 
         if(dataFiles.size() > 0) {
-            println("\t- now loading data using " + cores + " parallel thread(s)");
+            //println("\t- now loading data using " + cores + " parallel thread(s)");
             final BlockingQueue<List<byte[]>> queue = new LinkedBlockingQueue<>(cores == 1 ? 1 : cores - 1);
 
             final CountDownLatch producerCountDownLatch = new CountDownLatch(1);
