@@ -223,7 +223,7 @@ public class JSONCollection implements BlockingQueueCallback {
                 System.out.print("\t- creating SODA collection " + name + " ...");
                 System.out.flush();
                 if (MongoDBBSONToAJDOSONLoading.KEEP_MONGODB_OBJECTIDS) {
-                    db.admin().createCollection(name, db.createDocumentFromString(
+                    db.admin().createCollection(name.toUpperCase(), db.createDocumentFromString(
                             "{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"}," +
                                     "\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\",\"jsonFormat\":\"OSON\"}," +
                                     "\"versionColumn\":{\"name\":\"VERSION\",\"type\":\"String\",\"method\":\"UUID\"}," +
