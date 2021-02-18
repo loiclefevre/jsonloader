@@ -1,5 +1,6 @@
 package com.oracle.jsonloader.command.mongodbbsontoajdosonloading;
 
+import com.oracle.jsonloader.util.BlockingQueueCallback;
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleDatabase;
 import oracle.soda.OracleDocument;

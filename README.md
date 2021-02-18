@@ -8,7 +8,8 @@ Toolset to migrate from MongoDB to Oracle Autonomous JSON database
 
 ```
 set serveroutput on size unlimited
-DECLARE
+
+CREATE OR REPLACE PROCEDURE DROP_ALL_COLLECTIONS AS
     coll_list  SODA_COLLNAME_LIST_T;
     status  NUMBER := 0;
 BEGIN
@@ -26,6 +27,8 @@ BEGIN
     END IF;
 END;
 /
+
+exec DROP_ALL_COLLECTIONS;
 ```
 
 ## How to query existing documents from a collection?

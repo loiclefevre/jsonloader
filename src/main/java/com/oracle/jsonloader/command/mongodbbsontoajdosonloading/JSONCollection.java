@@ -8,6 +8,7 @@ import com.oracle.jsonloader.exception.SODACollectionIdNotAutomaticallyGenerated
 import com.oracle.jsonloader.exception.SODACollectionMetadataUnmarshallException;
 import com.oracle.jsonloader.model.*;
 import com.oracle.jsonloader.util.BSONCollectionFilenameFilter;
+import com.oracle.jsonloader.util.BlockingQueueCallback;
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleDatabase;
 import oracle.soda.rdbms.OracleRDBMSClient;
@@ -222,6 +223,8 @@ public class JSONCollection implements BlockingQueueCallback {
             if (oracleCollection == null) {
                 System.out.print("\t- creating SODA collection " + name + " ...");
                 System.out.flush();
+
+                // Underlying TABLE_NAME set to uppercase to ease later SQL queries!
                 if (MongoDBBSONToAJDOSONLoading.KEEP_MONGODB_OBJECTIDS) {
                     db.admin().createCollection(name.toUpperCase(), db.createDocumentFromString(
                             "{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"CLIENT\"}," +
@@ -231,7 +234,14 @@ public class JSONCollection implements BlockingQueueCallback {
                                     "\"creationTimeColumn\":{\"name\":\"CREATED_ON\"}," +
                                     "\"readOnly\":false}"));
                 } else {
-                    db.admin().createCollection(name.toUpperCase());
+                    // \"tableName\": \""+getProperTableName(name)+"\",
+                    db.admin().createCollection(name.toUpperCase()/*,db.createDocumentFromString(
+                            "{\"keyColumn\":{\"name\":\"ID\",\"sqlType\":\"VARCHAR2\",\"maxLength\":255,\"assignmentMethod\":\"UUID\"}," +
+                                    "\"contentColumn\":{\"name\":\"JSON_DOCUMENT\",\"sqlType\":\"BLOB\",\"jsonFormat\":\"OSON\"}," +
+                                    "\"versionColumn\":{\"name\":\"VERSION\",\"type\":\"String\",\"method\":\"UUID\"}," +
+                                    "\"lastModifiedColumn\":{\"name\":\"LAST_MODIFIED\"}," +
+                                    "\"creationTimeColumn\":{\"name\":\"CREATED_ON\"}," +
+                                    "\"readOnly\":false}")*/);
                 }
                 println(" OK");
             } else {
@@ -253,6 +263,13 @@ public class JSONCollection implements BlockingQueueCallback {
 
 
     //=== Used to track progress ===
+    volatile String fileNameLoaded;
+
+    @Override
+    public void setFileNameLoaded(String fileNameLoaded) {
+        this.fileNameLoaded = fileNameLoaded;
+    }
+
     volatile long consumed = 0;
     volatile long readSize = 0;
     volatile long storedSize = 0;
@@ -277,5 +294,13 @@ public class JSONCollection implements BlockingQueueCallback {
         if (finished) {
             producerEndTime = System.currentTimeMillis();
         }
+    }
+
+    public static String getProperTableName(String name) {
+        name = name.toUpperCase();
+        name = name.replace('.', '_');
+        name = name.replace('-', '_');
+
+        return name;
     }
 }
