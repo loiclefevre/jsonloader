@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.Period;
+import java.time.ZoneOffset;
 
 public class MyOracleJsonFactory {
 	private static final boolean DISABLE_GENERATOR_POOL = Boolean.getBoolean("oracle.sql.json.OracleJsonFactory.DISABLE_GENERATOR_POOL");
@@ -184,11 +185,11 @@ public class MyOracleJsonFactory {
 	}
 
 	public OracleJsonTimestamp createTimestamp(Instant var1) {
-		return new OracleJsonTimestampImpl(var1);
+		return new OracleJsonTimestampImpl(var1.atOffset(ZoneOffset.UTC).toLocalDateTime());
 	}
 
 	public OracleJsonDate createDate(Instant var1) {
-		return new OracleJsonDateImpl(var1);
+		return new OracleJsonDateImpl(var1.atOffset(ZoneOffset.UTC).toLocalDateTime());
 	}
 
 	public OracleJsonIntervalDS createIntervalDS(Duration var1) {

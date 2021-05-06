@@ -8,7 +8,7 @@
 
     <groupId>com.oracle</groupId>
     <artifactId>jsonloader</artifactId>
-    <version>1.0.6</version>
+    <version>1.0.7</version>
 
     <name>JSONloader</name>
 
@@ -49,27 +49,27 @@
         <dependency>
             <groupId>com.oracle.database.security</groupId>
             <artifactId>oraclepki</artifactId>
-            <version>19.7.0.0</version>
+            <version>21.1.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.oracle.database.security</groupId>
             <artifactId>osdt_core</artifactId>
-            <version>19.7.0.0</version>
+            <version>21.1.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.oracle.database.security</groupId>
             <artifactId>osdt_cert</artifactId>
-            <version>19.7.0.0</version>
+            <version>21.1.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc8</artifactId>
-            <version>20.0.0.0</version>
+            <version>21.1.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ucp</artifactId>
-            <version>20.0.0.0</version>
+            <version>21.1.0.0</version>
         </dependency>
 <!--        <dependency>
             <groupId>ojdbc8</groupId>
@@ -88,7 +88,7 @@
 -->        <dependency>
             <groupId>com.oracle.database.soda</groupId>
             <artifactId>orajsoda</artifactId>
-            <version>1.1.4</version>
+            <version>1.1.7.1</version>
         </dependency>
         <dependency>
             <groupId>com.zaxxer</groupId>

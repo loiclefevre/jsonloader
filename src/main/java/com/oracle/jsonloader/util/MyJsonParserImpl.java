@@ -8,6 +8,7 @@ import oracle.sql.json.OracleJsonValue;
 import java.io.InputStream;
 import java.io.Reader;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 
 public class MyJsonParserImpl extends JsonParserImpl {
@@ -46,7 +47,7 @@ public class MyJsonParserImpl extends JsonParserImpl {
 	public OracleJsonValue getValue() {
 		OracleJsonValue value = super.getValue();
 		if (lastStringIsTimeStamp) {
-			value = new OracleJsonTimestampImpl(Instant.parse(value.toString().substring(1, 21)));
+			value = new OracleJsonTimestampImpl(Instant.parse(value.toString().substring(1, 21)).atOffset(ZoneOffset.UTC).toLocalDateTime());
 		}
 		//System.out.println("getValue: " + value);
 		return value;

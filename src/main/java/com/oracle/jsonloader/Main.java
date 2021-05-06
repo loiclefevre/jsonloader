@@ -10,7 +10,7 @@ import static com.oracle.jsonloader.util.Console.*;
 
 public class Main {
 
-    public static final String VERSION = "1.0.6";
+    public static final String VERSION = "1.0.7";
 
     enum Command {
         MongoDBBSONToOSONLoading,

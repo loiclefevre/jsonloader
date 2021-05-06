@@ -75,10 +75,12 @@ public class Load {
 
 		//pds.setURL("jdbc:oracle:thin:@//localhost/PDB1");
 		//System.out.println("jdbc:oracle:thin:@" + ajdConnectionService + "?TNS_ADMIN=" + new File("wallet").getCanonicalPath().replace('\\', '/'));
-		pds.setURL("jdbc:oracle:thin:@" + ajdConnectionService + "?TNS_ADMIN=" + new File("wallet").getCanonicalPath().replace('\\', '/'));
+
+		pds.setURL("jdbc:oracle:thin:@" + ajdConnectionService + (ajdConnectionService.startsWith("//") ? "" : "?TNS_ADMIN=" + new File("wallet").getCanonicalPath().replace('\\', '/')));
+
 		pds.setUser(user);
 		pds.setPassword(password);
-		pds.setConnectionPoolName("JDBC_UCP_POOL:" + Thread.currentThread().getName());
+		pds.setConnectionPoolName("JDBC_UCP_POOL-" + Thread.currentThread().getName());
 		pds.setInitialPoolSize(cores);
 		pds.setMinPoolSize(cores);
 		pds.setMaxPoolSize(cores);
@@ -87,6 +89,8 @@ public class Load {
 		pds.setValidateConnectionOnBorrow(true);
 		pds.setMaxStatements(20);
 		pds.setConnectionProperty(OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH, "20");
+
+		//System.out.println("Connecting to: "+pds.getURL());
 
 		return pds;
 	}
