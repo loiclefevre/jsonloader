@@ -228,6 +228,11 @@
                         -H:ConfigurationFileDirectories=../src/main/resources/META-INF/native-image
                         -H:+TraceNativeToolUsage
                         -H:-CheckToolchain
+                        -H:IncludeResourceBundles=oracle.net.jdbc.nl.mesg.NLSR,oracle.net.mesg.Message
+                        --allow-incomplete-classpath
+                        --initialize-at-build-time=oracle.net.jdbc.nl.mesg.NLSR_en
+                        --initialize-at-build-time=oracle.jdbc.driver.DynamicByteArray,oracle.sql.ConverterArchive,oracle.sql.converter.CharacterConverterJDBC,oracle.sql.converter.CharacterConverter1Byte
+                        --initialize-at-run-time=java.sql.DriverManager
                     </buildArgs>
                 </configuration>
             </plugin>
