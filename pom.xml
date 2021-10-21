@@ -231,7 +231,11 @@
                         -H:IncludeResourceBundles=oracle.net.jdbc.nl.mesg.NLSR,oracle.net.mesg.Message
                         --allow-incomplete-classpath
                         --initialize-at-build-time=oracle.net.jdbc.nl.mesg.NLSR_en
-                        --initialize-at-build-time=oracle.jdbc.driver.DynamicByteArray,oracle.sql.ConverterArchive,oracle.sql.converter.CharacterConverterJDBC,oracle.sql.converter.CharacterConverter1Byte,oracle.jdbc.datasource.impl.OracleDataSource
+                        --initialize-at-build-time=oracle.jdbc.driver.DynamicByteArray
+                        --initialize-at-build-time=oracle.sql.ConverterArchive
+                        --initialize-at-build-time=oracle.sql.converter.CharacterConverterJDBC
+                        --initialize-at-build-time=oracle.sql.converter.CharacterConverter1Byte
+                        --initialize-at-build-time=oracle.jdbc.datasource.impl.OracleDataSource
                         --initialize-at-run-time=java.sql.DriverManager
                     </buildArgs>
                 </configuration>
