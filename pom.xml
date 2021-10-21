@@ -18,7 +18,7 @@
         <maven.compiler.target>${targetJavaVersion}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
-        <graalvm.version>21.3.0</graalvm.version>
+        <graalvm.version>21.2.0</graalvm.version>
     </properties>
 
     <dependencies>
