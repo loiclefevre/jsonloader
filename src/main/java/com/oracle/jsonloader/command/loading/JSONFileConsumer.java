@@ -1,6 +1,7 @@
 package com.oracle.jsonloader.command.loading;
 
 import com.oracle.jsonloader.util.BlockingQueueCallback;
+import oracle.jdbc.internal.OracleConnection;
 import oracle.soda.OracleCollection;
 import oracle.soda.OracleDatabase;
 import oracle.soda.OracleDocument;

@@ -30,8 +30,9 @@ public class MongoDBBSONToAJDOSONLoading {
         new MongoDBBSONToAJDOSONLoading(args).run();
     }
 
-    public static int BATCH_SIZE = 5000;
+    public static int BATCH_SIZE = 2048;
     public static boolean KEEP_MONGODB_OBJECTIDS = true;
+    public static int CORES = -1;
 
     private String dumpDir;
     private String databaseName;
@@ -88,8 +89,10 @@ public class MongoDBBSONToAJDOSONLoading {
         final List<JSONCollection> collections = new ArrayList<>();
 
         println("================================================================================");
-        int cores = Runtime.getRuntime().availableProcessors();
+        int cores = CORES == -1 ? Runtime.getRuntime().availableProcessors() : CORES;
         if (cores > 1) cores--;
+
+        println("Using "+cores+" threads for ingestion");
 
         PoolDataSource pds = null;
         try {
@@ -113,8 +116,9 @@ public class MongoDBBSONToAJDOSONLoading {
             int collectionNumber = 1;
             for (JSONCollection c : collections) {
                 println(String.format("  . Loading collection [%d/%d]: %s...", collectionNumber, collections.size(), c.name));
-                c.findDatafiles();
-                c.load(cores,oracleMetadata);
+                final long fileSize = c.findDatafiles();
+                // limit parallelism in case of small file (<= 512MB)
+                c.load(fileSize <= 1024*1024*512 ? Math.min(cores,16) : cores,oracleMetadata);
                 collectionNumber++;
             }
         } catch (Throwable t) {
@@ -174,18 +178,26 @@ public class MongoDBBSONToAJDOSONLoading {
         PoolDataSource pds = PoolDataSourceFactory.getPoolDataSource();
         pds.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
 
+        // jdbc:oracle:thin:ADMIN/xxx!@(description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1521)(host=adb.us-ashburn-1.oraclecloud.com))(connect_data=(service_name=mqssyowmqvgac1y_atpash19_tp.atp.oraclecloud.com))(security=(ssl_server_cert_dn="CN=adwc.uscom-east-1.oraclecloud.com, OU=Oracle BMCS US, O=Oracle Corporation, L=Redwood City, ST=California, C=US")))
+
         //pds.setURL("jdbc:oracle:thin:@//localhost/PDB1");
         //System.out.println("jdbc:oracle:thin:@" + ajdConnectionService + "?TNS_ADMIN=" + new File("wallet").getCanonicalPath().replace('\\', '/'));
-        pds.setURL("jdbc:oracle:thin:@" + ajdConnectionService + "?TNS_ADMIN=" + new File("wallet").getCanonicalPath().replace('\\', '/'));
+        if(ajdConnectionService.toLowerCase().trim().startsWith("("))
+        {
+            pds.setURL("jdbc:oracle:thin:@" + ajdConnectionService);
+        } else {
+            pds.setURL("jdbc:oracle:thin:@" + ajdConnectionService + "?TNS_ADMIN=" + new File("wallet").getCanonicalPath().replace('\\', '/'));
+        }
+
         pds.setUser(user);
         pds.setPassword(password);
-        pds.setConnectionPoolName("JDBC_UCP_POOL:" + Thread.currentThread().getName());
-        pds.setInitialPoolSize(cores);
-        pds.setMinPoolSize(cores);
+        pds.setConnectionPoolName("JDBC_UCP_POOL-" + Thread.currentThread().getName());
+        pds.setInitialPoolSize(1);
+        pds.setMinPoolSize(Math.min(8,cores));
         pds.setMaxPoolSize(cores);
-        pds.setTimeoutCheckInterval(30);
+        pds.setTimeoutCheckInterval(120);
         pds.setInactiveConnectionTimeout(120);
-        pds.setValidateConnectionOnBorrow(true);
+        pds.setValidateConnectionOnBorrow(false);
         pds.setMaxStatements(20);
         pds.setConnectionProperty(OracleConnection.CONNECTION_PROPERTY_DEFAULT_ROW_PREFETCH, "20");
 
@@ -226,6 +238,10 @@ public class MongoDBBSONToAJDOSONLoading {
                     break;
 
                 case 8:
+                    CORES = Integer.parseInt(args[i]);
+                    break;
+
+                case 9:
                     oracleMetadataFilename = args[i];
                     break;
 
@@ -238,6 +254,7 @@ public class MongoDBBSONToAJDOSONLoading {
         println("> Destination database user name: " + user);
         println("> JSON loading batch size       : " + BATCH_SIZE);
         println("> Keep MongoDB ObjectIDs        : " + KEEP_MONGODB_OBJECTIDS);
+        println("> CPU Threads                   : " + CORES);
         if(oracleMetadataFilename != null) {
             println("> Oracle JSON Metadata file     : " + oracleMetadataFilename);
         }

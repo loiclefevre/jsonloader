@@ -71,8 +71,8 @@ public class BSONFileProducer implements Runnable {
 
             try (
                     InputStream inputStream = f.getName().toLowerCase().endsWith(".gz") ?
-                            new GZIPInputStream(new FileInputStream(f), 16 * 1024 * 1024)
-                            : new BufferedInputStream(new FileInputStream(f), 16 * 1024 * 1024)
+                            new GZIPInputStream(new FileInputStream(f), 64 * 1024 * 1024)
+                            : new BufferedInputStream(new FileInputStream(f), 64 * 1024 * 1024)
             ) {
                 List<byte[]> batch = new ArrayList<>();
 

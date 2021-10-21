@@ -32,6 +32,7 @@ public class JSONCollection implements BlockingQueueCallback {
     public final List<File> dataFiles = new ArrayList<>();
     public MongoDBMetadata mongoDBMetadata;
     private PoolDataSource pds;
+    private long totalFileSize;
 
     public JSONCollection(final String name, final File metadata, final PoolDataSource pds) {
         this.name = name;
@@ -42,7 +43,7 @@ public class JSONCollection implements BlockingQueueCallback {
     /**
      * Discover data files associated with this collection using either .bson or .bson.gz file extension.
      */
-    public void findDatafiles() {
+    public long findDatafiles() {
         long totalSize = 0;
 
         for (File f : metadata.getParentFile().listFiles(new BSONCollectionFilenameFilter(name))) {
@@ -52,7 +53,11 @@ public class JSONCollection implements BlockingQueueCallback {
             }
         }
 
-        println(String.format("\t- found %d data file(s) (%.3f MB)", dataFiles.size(), (double) totalSize / 1024.0 / 1024.0));
+        totalFileSize = totalSize;
+
+        println(String.format("\t- found %d data file(s) (%.3f MB)", dataFiles.size(), (double) totalFileSize / 1024.0 / 1024.0));
+
+        return totalFileSize;
     }
 
     /**
