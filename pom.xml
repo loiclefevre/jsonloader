@@ -224,6 +224,7 @@
                         --allow-incomplete-classpath
                         --report-unsupported-elements-at-runtime
                         --enable-all-security-services
+                        -H:ConfigurationFileDirectories=../src/main/resources/META-INF/native-image
                         -H:+TraceNativeToolUsage
                         -H:-CheckToolchain
                     </buildArgs>
