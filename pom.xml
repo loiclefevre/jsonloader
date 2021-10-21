@@ -230,7 +230,7 @@
                         -H:-CheckToolchain
                         -H:IncludeResourceBundles=oracle.net.jdbc.nl.mesg.NLSR,oracle.net.mesg.Message
                         --allow-incomplete-classpath
-                        --initialize-at-build-time=oracle.net.mesg.Message
+                        --initialize-at-run-time=oracle.net.mesg.Message
                         --initialize-at-build-time=oracle.net.jdbc.nl.mesg.NLSR_en
                         --initialize-at-build-time=oracle.jdbc.driver.DynamicByteArray
                         --initialize-at-build-time=oracle.sql.ConverterArchive
